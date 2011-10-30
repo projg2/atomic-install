@@ -25,3 +25,13 @@ int mv(const char *source, const char *dest);
  * @return: 0 on success, errno value on failure.
  */
 int cp(const char *source, const char *dest);
+
+/* clonefile()
+ * @param source: current file path
+ * @param dest: new complete file path
+ *
+ * Manually copy the contents and attributes of @source to @dest.
+ *
+ * @return: 0 on success, errno value on failure.
+ */
+int clonefile(const char *source, const char *dest);
