@@ -8,10 +8,10 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 
 AC_PROG_CC
 AM_PROG_CC_C_O
-dnl AC_USE_SYSTEM_EXTENSIONS
+AC_USE_SYSTEM_EXTENSIONS
 LT_INIT([disable-static])
 
-AC_CHECK_FUNCS([posix_fallocate posix_fadvise])
+AC_CHECK_FUNCS([posix_fallocate posix_fadvise splice])
 
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--disable-debug],
