@@ -15,6 +15,9 @@ AC_CHECK_FUNCS([fchmodat posix_fallocate posix_fadvise utimensat])
 
 AC_TYPE_OFF_T
 AC_TYPE_SSIZE_T
+AC_TYPE_UINT8_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
 
 AC_ARG_ENABLE([libattr],
 	[AS_HELP_STRING([--disable-libattr],
