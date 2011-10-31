@@ -93,7 +93,7 @@ static int ai_splice(int fd_in, int fd_out) {
 	return wr;
 }
 
-static int ai_cp_reg(const char *source, const char *dest) {
+static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	int fd_in, fd_out;
 	int ret = 0, splret;
 
@@ -109,12 +109,16 @@ static int ai_cp_reg(const char *source, const char *dest) {
 		return tmp;
 	}
 
-	do {
-		splret = ai_splice(fd_in, fd_out);
+	ret = posix_fallocate(fd_out, 0, expsize);
 
-		if (splret == -1)
-			ret = errno;
-	} while (splret > 0);
+	if (!ret) {
+		do {
+			splret = ai_splice(fd_in, fd_out);
+
+			if (splret == -1)
+				ret = errno;
+		} while (splret > 0);
+	}
 
 	if (close(fd_out) && !ret)
 		ret = errno;
@@ -135,7 +139,7 @@ int ai_cp(const char *source, const char *dest) {
 	if (S_ISLNK(st.st_mode))
 		ret = ai_cp_symlink(source, dest, st.st_size);
 	else if (S_ISREG(st.st_mode))
-		ret = ai_cp_reg(source, dest);
+		ret = ai_cp_reg(source, dest, st.st_size);
 	else
 		return EINVAL;
 
