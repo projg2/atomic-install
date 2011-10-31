@@ -107,7 +107,7 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 		return errno;
 
 	/* don't care about perms, will have to chmod anyway */
-	fd_out = creat(dest, 0);
+	fd_out = creat(dest, 0666);
 	if (fd_out == -1) {
 		const int tmp = errno;
 		close(fd_in);
