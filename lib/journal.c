@@ -10,8 +10,12 @@
 #include <stdio.h>
 #include <errno.h>
 
-#if HAVE_STDINT_H
+#ifdef HAVE_STDINT_H
 #	include <stdint.h>
+#endif
+
+#ifdef HAVE_LOCKF
+#	include <unistd.h>
 #endif
 
 #pragma pack(push)
@@ -31,12 +35,21 @@ struct ai_journal {
 #pragma pack(pop)
 
 int ai_journal_create(const char *journal_path, const char *location) {
-	FILE *f;
 	struct ai_journal newj = { "AIj!", 0x0000, 0, 0 };
+
+	FILE *f;
+#ifdef HAVE_LOCKF
+	int fd;
+#endif
 
 	f = fopen(journal_path, "wb");
 	if (!f)
 		return errno;
+
+#ifdef HAVE_LOCKF
+	fd = fileno(f);
+	lockf(fd, F_LOCK, 0);
+#endif
 
 	if (fwrite(&newj, sizeof(newj), 1, f) < 1) {
 		fclose(f);
@@ -45,6 +58,9 @@ int ai_journal_create(const char *journal_path, const char *location) {
 
 	/* XXX */
 
+#ifdef HAVE_LOCKF
+	lockf(fd, F_ULOCK, 0);
+#endif
 	if (fclose(f))
 		return errno;
 
