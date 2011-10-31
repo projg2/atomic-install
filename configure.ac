@@ -13,6 +13,9 @@ LT_INIT([disable-static])
 
 AC_CHECK_FUNCS([posix_fallocate posix_fadvise splice])
 
+AC_TYPE_OFF_T
+AC_TYPE_SSIZE_T
+
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--disable-debug],
 		[Disable debugging asserts])])
