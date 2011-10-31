@@ -118,6 +118,11 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	ret = posix_fallocate(fd_out, 0, expsize);
 #endif
 
+#ifdef HAVE_POSIX_FADVISE
+	posix_fadvise(fd_in, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
+	posix_fadvise(fd_out, 0, 0, POSIX_FADV_SEQUENTIAL);
+#endif
+
 	if (!ret) {
 		do {
 			splret = ai_splice(fd_in, fd_out);

@@ -11,7 +11,7 @@ AM_PROG_CC_C_O
 dnl AC_USE_SYSTEM_EXTENSIONS
 LT_INIT([disable-static])
 
-AC_CHECK_FUNCS([posix_fallocate])
+AC_CHECK_FUNCS([posix_fallocate posix_fadvise])
 
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--disable-debug],
