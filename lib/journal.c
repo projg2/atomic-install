@@ -132,7 +132,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 #ifdef HAVE_LOCKF
 	int fd;
 #endif
-	uint64_t len = sizeof(newj);
+	uint64_t len = sizeof(newj) + 1;
 
 	f = fopen(journal_path, "wb");
 	if (!f)
@@ -151,11 +151,16 @@ int ai_journal_create(const char *journal_path, const char *location) {
 	ret = ai_traverse_tree(location, "", f, 1, &len);
 
 	if (!ret) {
-		newj.length = len;
-
-		rewind(f);
-		if (fwrite(&newj, sizeof(newj), 1, f) < 1)
+		/* Null-terminate the list. */
+		if (fputc(0, f) == EOF)
 			ret = errno;
+		else {
+			newj.length = len;
+
+			rewind(f);
+			if (fwrite(&newj, sizeof(newj), 1, f) < 1)
+				ret = errno;
+		}
 	}
 
 #ifdef HAVE_LOCKF
