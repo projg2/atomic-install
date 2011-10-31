@@ -17,7 +17,7 @@ int ai_mv(const char *source, const char *dest) {
 
 	/* cross-device? try manually. */
 	if (errno == EXDEV) {
-		int ret = ai_cp(source, dest);
+		int ret = ai_cp_a(source, dest);
 		if (!ret)
 			unlink(source);
 		return ret;
@@ -35,7 +35,7 @@ int ai_cp_l(const char *source, const char *dest) {
 
 	/* cross-device or not supported? try manually. */
 	if (errno == EXDEV || errno == EACCES)
-		return ai_cp(source, dest);
+		return ai_cp_a(source, dest);
 
 	return errno;
 }
@@ -132,7 +132,7 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	return ret;
 }
 
-int ai_cp(const char *source, const char *dest) {
+int ai_cp_a(const char *source, const char *dest) {
 	int ret;
 	struct stat st;
 

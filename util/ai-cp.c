@@ -9,7 +9,7 @@
 #include "lib/copy.h"
 
 int main(int argc, char *argv[]) {
-	int (*copy_func)(const char*, const char*) = ai_cp;
+	int (*copy_func)(const char*, const char*) = ai_cp_a;
 	int args_index = 1;
 	int ret;
 

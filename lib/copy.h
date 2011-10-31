@@ -26,7 +26,7 @@ int ai_mv(const char *source, const char *dest);
  */
 int ai_cp_l(const char *source, const char *dest);
 
-/* ai_cp()
+/* ai_cp_a()
  * @param source: current file path
  * @param dest: new complete file path
  *
@@ -36,4 +36,4 @@ int ai_cp_l(const char *source, const char *dest);
  *
  * @return: 0 on success, errno value on failure.
  */
-int ai_cp(const char *source, const char *dest);
+int ai_cp_a(const char *source, const char *dest);
