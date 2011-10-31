@@ -1,9 +1,11 @@
 ACLOCAL_AMFLAGS = -I m4
 
-noinst_LTLIBRARIES = lib/libcommon.la
+aiincludedir = ${includedir}/atomic-install
 
-lib_libcommon_la_SOURCES = lib/io.c lib/io.h
-lib_libcommon_la_LDFLAGS = -static
+lib_LTLIBRARIES = lib/libai-copy.la
+aiinclude_HEADERS = lib/copy.h
+
+lib_libai_copy_la_SOURCES = lib/copy.c lib/copy.h
 
 EXTRA_DIST = NEWS
 NEWS: configure.ac Makefile.am

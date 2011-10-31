@@ -1,4 +1,4 @@
-/* atomic-install -- I/O helper functions
+/* libcopy -- high-level copying helper
  * (c) 2011 Michał Górny
  * 2-clause BSD-licensed
  */
