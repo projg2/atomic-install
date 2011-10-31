@@ -4,11 +4,11 @@
  */
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <errno.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 int ai_mv(const char *source, const char *dest) {
@@ -65,8 +65,62 @@ static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 	return 0;
 }
 
+#ifndef AI_BUFSIZE
+#	define AI_BUFSIZE 65536
+#endif
+
+static int ai_splice(int fd_in, int fd_out) {
+	static char buf[AI_BUFSIZE];
+	char *bufp = buf;
+	ssize_t ret, wr = 0;
+
+	ret = read(fd_in, buf, sizeof(buf));
+	if (ret == -1) {
+		if (errno == EINTR)
+			return 1;
+		else
+			return -1;
+	}
+
+	while (ret > 0) {
+		wr = write(fd_out, bufp, ret);
+		if (wr == -1 && errno != EINTR)
+			return -1;
+		ret -= wr;
+		bufp += wr;
+	}
+
+	return wr;
+}
+
 static int ai_cp_reg(const char *source, const char *dest) {
-	return -1;
+	int fd_in, fd_out;
+	int ret = 0, splret;
+
+	fd_in = open(source, O_RDONLY);
+	if (fd_in == -1)
+		return errno;
+
+	/* don't care about perms, will have to chmod anyway */
+	fd_out = creat(dest, 0);
+	if (fd_out == -1) {
+		const int tmp = errno;
+		close(fd_in);
+		return tmp;
+	}
+
+	do {
+		splret = ai_splice(fd_in, fd_out);
+
+		if (splret == -1)
+			ret = errno;
+	} while (splret > 0);
+
+	if (close(fd_out) && !ret)
+		ret = errno;
+	close(fd_in);
+
+	return ret;
 }
 
 int ai_cp(const char *source, const char *dest) {
