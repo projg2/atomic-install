@@ -11,13 +11,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int mv(const char *source, const char *dest) {
+int ai_mv(const char *source, const char *dest) {
 	if (!rename(source, dest))
 		return 0;
 
 	/* cross-device? try manually. */
 	if (errno == EXDEV) {
-		int ret = clonefile(source, dest);
+		int ret = ai_cp(source, dest);
 		if (!ret)
 			unlink(source);
 		return ret;
@@ -26,7 +26,7 @@ int mv(const char *source, const char *dest) {
 	return errno;
 }
 
-int cp(const char *source, const char *dest) {
+int ai_cp_l(const char *source, const char *dest) {
 	/* link() will not overwrite */
 	unlink(dest);
 
@@ -35,12 +35,12 @@ int cp(const char *source, const char *dest) {
 
 	/* cross-device or not supported? try manually. */
 	if (errno == EXDEV || errno == EACCES)
-		return clonefile(source, dest);
+		return ai_cp(source, dest);
 
 	return errno;
 }
 
-static int clone_link(const char *source, const char *dest, ssize_t symlen) {
+static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 	static char *buf = NULL;
 	static ssize_t bufsize;
 
@@ -65,11 +65,11 @@ static int clone_link(const char *source, const char *dest, ssize_t symlen) {
 	return 0;
 }
 
-static int clone_reg(const char *source, const char *dest) {
+static int ai_cp_reg(const char *source, const char *dest) {
 	return -1;
 }
 
-int clonefile(const char *source, const char *dest) {
+int ai_cp(const char *source, const char *dest) {
 	int ret;
 	struct stat st;
 
@@ -79,9 +79,9 @@ int clonefile(const char *source, const char *dest) {
 
 	/* Is it a symlink? */
 	if (S_ISLNK(st.st_mode))
-		ret = clone_link(source, dest, st.st_size);
+		ret = ai_cp_symlink(source, dest, st.st_size);
 	else if (S_ISREG(st.st_mode))
-		ret = clone_reg(source, dest);
+		ret = ai_cp_reg(source, dest);
 	else
 		return EINVAL;
 
