@@ -14,6 +14,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#ifdef HAVE_LIBATTR
+#	include <attr/libattr.h>
+#endif
+
 int ai_mv(const char *source, const char *dest) {
 	if (!rename(source, dest))
 		return 0;
@@ -193,6 +197,18 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 	return 0;
 }
 
+#ifdef HAVE_LIBATTR
+static int attr_allow_all(const char *name, struct error_context *err) {
+	return 1;
+}
+#endif
+
+static void ai_cp_attr(const char *source, const char *dest) {
+#ifdef HAVE_LIBATTR
+	attr_copy_file(source, dest, NULL, NULL);
+#endif
+}
+
 int ai_cp_a(const char *source, const char *dest) {
 	int ret;
 	struct stat st;
@@ -209,8 +225,12 @@ int ai_cp_a(const char *source, const char *dest) {
 	else
 		return EINVAL;
 
-	if (!ret)
+	if (!ret) {
 		ret = ai_cp_stat(dest, st);
+		if (!ret) {
+			ai_cp_attr(source, dest);
+		}
+	}
 
 	return ret;
 }

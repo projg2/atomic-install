@@ -16,6 +16,13 @@ AC_CHECK_FUNCS([fchmodat posix_fallocate posix_fadvise utimensat])
 AC_TYPE_OFF_T
 AC_TYPE_SSIZE_T
 
+AC_ARG_ENABLE([libattr],
+	[AS_HELP_STRING([--disable-libattr],
+		[Disable use of libattr (default: autodetect)])])
+AS_IF([test x"$enable_libattr" != x"no"], [
+	AC_CHECK_LIB([attr], [attr_copy_file])
+])
+
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--disable-debug],
 		[Disable debugging asserts])])
