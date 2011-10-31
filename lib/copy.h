@@ -3,6 +3,10 @@
  * 2-clause BSD-licensed
  */
 
+#pragma once
+#ifndef _ATOMIC_INSTALL_COPY_H
+#define _ATOMIC_INSTALL_COPY_H
+
 /* ai_mv()
  * @param source: current file path
  * @param dest: new complete file path
@@ -37,3 +41,5 @@ int ai_cp_l(const char *source, const char *dest);
  * @return: 0 on success, errno value on failure.
  */
 int ai_cp_a(const char *source, const char *dest);
+
+#endif /*_ATOMIC_INSTALL_COPY_H*/
