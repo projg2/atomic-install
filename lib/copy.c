@@ -145,6 +145,16 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 	if (lchown(dest, st.st_uid, st.st_gid))
 		return errno;
 
+#ifdef HAVE_UTIMENSAT
+	{
+		struct timespec ts[2];
+
+		ts[0] = st.st_atim;
+		ts[1] = st.st_mtim;
+		if (utimensat(AT_FDCWD, dest, ts, AT_SYMLINK_NOFOLLOW))
+			return errno;
+	}
+#else
 	if (!S_ISLNK(st.st_mode)) {
 		struct utimbuf ts;
 
@@ -156,6 +166,7 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 		if (chmod(dest, st.st_mode & ~S_IFMT))
 			return errno;
 	}
+#endif
 
 	return 0;
 }

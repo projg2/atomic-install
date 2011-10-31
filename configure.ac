@@ -11,7 +11,7 @@ AM_PROG_CC_C_O
 AC_USE_SYSTEM_EXTENSIONS
 LT_INIT([disable-static])
 
-AC_CHECK_FUNCS([posix_fallocate posix_fadvise])
+AC_CHECK_FUNCS([posix_fallocate posix_fadvise utimensat])
 
 AC_TYPE_OFF_T
 AC_TYPE_SSIZE_T
