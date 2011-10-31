@@ -13,7 +13,9 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <dirent.h>
 
 #ifdef HAVE_STDINT_H
@@ -163,4 +165,51 @@ int ai_journal_create(const char *journal_path, const char *location) {
 		ret = errno;
 
 	return ret;
+}
+
+int ai_journal_open(const char *journal_path, journal_t *ret) {
+	int fd;
+	struct stat st;
+	int retval = 0;
+
+	fd = open(journal_path, O_RDWR);
+	if (fd == -1)
+		return errno;
+
+	lockf(fd, F_LOCK, 0);
+	do {
+		if (fstat(fd, &st)) {
+			retval = errno;
+			break;
+		}
+
+		if (st.st_size < sizeof(struct ai_journal)) {
+			retval = EINVAL;
+			break;
+		}
+
+		*ret = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+		if (!ret) {
+			retval = errno;
+			break;
+		}
+
+		if (memcmp((*ret)->magic, AI_JOURNAL_MAGIC, sizeof(AI_JOURNAL_MAGIC))
+				|| (*ret)->version != 0
+				|| (*ret)->length != st.st_size) {
+
+			munmap(ret, st.st_size);
+			retval = EINVAL;
+		}
+	} while (0);
+
+	close(fd);
+	return retval;
+}
+
+int ai_journal_close(journal_t j) {
+	if (munmap(j, j->length))
+		return errno;
+
+	return 0;
 }
