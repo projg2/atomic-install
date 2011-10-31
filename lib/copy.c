@@ -71,9 +71,6 @@ static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 #endif
 
 static int ai_splice(int fd_in, int fd_out) {
-#ifdef HAVE_SPLICE
-	return splice(fd_in, NULL, fd_out, NULL, AI_BUFSIZE, 0);
-#else
 	static char buf[AI_BUFSIZE];
 	char *bufp = buf;
 	ssize_t ret, wr = 0;
@@ -95,7 +92,6 @@ static int ai_splice(int fd_in, int fd_out) {
 	}
 
 	return wr;
-#endif
 }
 
 static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
@@ -127,7 +123,6 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	posix_fadvise(fd_in, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 	posix_fadvise(fd_out, 0, 0, POSIX_FADV_SEQUENTIAL);
 #endif
-
 	if (!ret) {
 		do {
 			splret = ai_splice(fd_in, fd_out);
