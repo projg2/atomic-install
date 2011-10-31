@@ -101,6 +101,11 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	if (fd_in == -1)
 		return errno;
 
+	/* ensure to remove destination file before proceeding;
+	 * otherwise, we could rewrite hardlinked file */
+	if (unlink(dest) && errno != ENOENT)
+		return errno;
+
 	/* don't care about perms, will have to chmod anyway */
 	fd_out = creat(dest, 0);
 	if (fd_out == -1) {
