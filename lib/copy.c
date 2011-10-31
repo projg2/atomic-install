@@ -8,6 +8,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <utime.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -143,6 +144,25 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	return ret;
 }
 
+static int ai_cp_stat(const char *dest, struct stat st) {
+	if (lchown(dest, st.st_uid, st.st_gid))
+		return errno;
+
+	if (!S_ISLNK(st.st_mode)) {
+		struct utimbuf ts;
+
+		ts.actime = st.st_atime;
+		ts.modtime = st.st_mtime;
+		if (utime(dest, &ts))
+			return errno;
+
+		if (chmod(dest, st.st_mode & ~S_IFMT))
+			return errno;
+	}
+
+	return 0;
+}
+
 int ai_cp_a(const char *source, const char *dest) {
 	int ret;
 	struct stat st;
@@ -160,7 +180,7 @@ int ai_cp_a(const char *source, const char *dest) {
 		return EINVAL;
 
 	if (!ret)
-		/* XXX, clone attributes */;
+		ret = ai_cp_stat(dest, st);
 
 	return ret;
 }
