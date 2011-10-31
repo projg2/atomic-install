@@ -165,11 +165,13 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 		ts.modtime = st.st_mtime;
 		if (utime(dest, &ts))
 			return errno;
+	}
+#endif
 
+	if (!S_ISLNK(st.st_mode)) {
 		if (chmod(dest, st.st_mode & ~S_IFMT))
 			return errno;
 	}
-#endif
 
 	return 0;
 }
