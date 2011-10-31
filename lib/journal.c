@@ -4,7 +4,7 @@
  */
 
 #include "config.h"
-#include "copy.h"
+#include "journal.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,14 +29,14 @@ struct ai_journal {
 	uint32_t flags; /* unused right now */
 	uint8_t stage; /* 0.. */
 
-	char padding[5];
+	uint64_t length; /* file length */
 
 	char files[]; /* list of null-terminated paths */
 };
 
 #pragma pack(pop)
 
-static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int is_dir) {
+static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int is_dir, uint64_t *filelen) {
 	char *fn;
 	DIR *dir;
 	struct dirent *dent;
@@ -93,7 +93,7 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 		sprintf(fn, "%s/%s", path, dent->d_name);
 
 		if (is_dir != 0) {
-			ret = ai_traverse_tree(root, fn, outf, is_dir == 1);
+			ret = ai_traverse_tree(root, fn, outf, is_dir == 1, filelen);
 
 			if (ret == ENOTDIR)
 				is_dir = 0;
@@ -102,6 +102,7 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 		if (!is_dir) {
 			if (fwrite(fn, len, 1, outf) != 1)
 				ret = errno;
+			*filelen += len;
 		}
 
 		free(fn);
@@ -127,6 +128,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 #ifdef HAVE_LOCKF
 	int fd;
 #endif
+	uint64_t len = sizeof(newj);
 
 	f = fopen(journal_path, "wb");
 	if (!f)
@@ -142,7 +144,15 @@ int ai_journal_create(const char *journal_path, const char *location) {
 		return errno;
 	}
 
-	ret = ai_traverse_tree(location, "", f, 1);
+	ret = ai_traverse_tree(location, "", f, 1, &len);
+
+	if (!ret) {
+		newj.length = len;
+
+		rewind(f);
+		if (fwrite(&newj, sizeof(newj), 1, f) < 1)
+			ret = errno;
+	}
 
 #ifdef HAVE_LOCKF
 	lockf(fd, F_ULOCK, 0);
