@@ -4,6 +4,7 @@
  */
 
 #include "config.h"
+#include "copy.h"
 
 #include <stdlib.h>
 #include <errno.h>
