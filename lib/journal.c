@@ -218,3 +218,7 @@ int ai_journal_close(journal_t j) {
 
 	return 0;
 }
+
+const char *ai_journal_get_files(journal_t j) {
+	return j->files;
+}

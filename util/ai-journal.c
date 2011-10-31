@@ -24,6 +24,11 @@ int main(int argc, char *argv[]) {
 		if (ret)
 			printf("Journal open failed: %s\n", strerror(ret));
 		else {
+			const char *p;
+
+			for (p = ai_journal_get_files(j); *p; p += strlen(p)+1)
+				printf("%s\n", p);
+
 			ret = ai_journal_close(j);
 			if (ret)
 				printf("Journal close failed: %s\n", strerror(ret));
