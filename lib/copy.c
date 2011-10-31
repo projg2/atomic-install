@@ -87,10 +87,13 @@ static int ai_splice(int fd_in, int fd_out) {
 
 	while (ret > 0) {
 		wr = write(fd_out, bufp, ret);
-		if (wr == -1 && errno != EINTR)
-			return -1;
-		ret -= wr;
-		bufp += wr;
+		if (wr == -1) {
+			if (errno != EINTR)
+				return -1;
+		} else {
+			ret -= wr;
+			bufp += wr;
+		}
 	}
 
 	return wr;
