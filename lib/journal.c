@@ -20,11 +20,13 @@
 #	include <stdint.h>
 #endif
 
+#define AI_JOURNAL_MAGIC "AIj!"
+
 #pragma pack(push)
 #pragma pack(1)
 
 struct ai_journal {
-	char magic[4]; /* AIj! */
+	char magic[sizeof(AI_JOURNAL_MAGIC)]; /* AIj!\0 */
 	uint16_t version; /* 0x0000 */
 	uint32_t flags; /* unused right now */
 	uint8_t stage; /* 0.. */
@@ -121,7 +123,7 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 }
 
 int ai_journal_create(const char *journal_path, const char *location) {
-	struct ai_journal newj = { "AIj!", 0x0000, 0, 0 };
+	struct ai_journal newj = { AI_JOURNAL_MAGIC, 0x0000, 0, 0 };
 
 	FILE *f;
 	int ret;
