@@ -145,6 +145,8 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 }
 
 static int ai_cp_stat(const char *dest, struct stat st) {
+	int ret;
+
 	if (lchown(dest, st.st_uid, st.st_gid))
 		return errno;
 
@@ -168,6 +170,21 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 	}
 #endif
 
+#ifdef HAVE_FCHMODAT
+	ret = fchmodat(AT_FDCWD, dest, st.st_mode, AT_SYMLINK_NOFOLLOW);
+
+	if (!ret);
+	else if (errno != EINVAL
+#ifdef EOPNOTSUPP /* POSIX-2008 */
+			&& errno != EOPNOTSUPP
+#endif
+#ifdef ENOTSUP /* glibc */
+			&& errno != ENOTSUP
+#endif
+			)
+		return errno;
+	else
+#endif
 	if (!S_ISLNK(st.st_mode)) {
 		if (chmod(dest, st.st_mode & ~S_IFMT))
 			return errno;
