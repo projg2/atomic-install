@@ -16,4 +16,4 @@ int ai_journal_close(journal_t j);
 
 const char *ai_journal_get_files(journal_t j);
 
-#endif /*_ATOMIC_INSTALL_COPY_H*/
+#endif /*_ATOMIC_INSTALL_JOURNAL_H*/
