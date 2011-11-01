@@ -31,16 +31,17 @@ struct ai_journal {
 	char magic[sizeof(AI_JOURNAL_MAGIC)]; /* AIj!\0 */
 	uint16_t version; /* 0x0000 */
 	uint32_t flags; /* unused right now */
-	uint8_t stage; /* 0.. */
+	uint8_t stage; /* enum */
 
 	uint64_t length; /* file length */
+	uint64_t maxpathlen; /* max filename length */
 
 	char files[]; /* list of null-terminated paths */
 };
 
 #pragma pack(pop)
 
-static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int is_dir, uint64_t *filelen) {
+static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int is_dir, uint64_t *filelen, uint64_t *maxpathlen) {
 	char *fn;
 	DIR *dir;
 	struct dirent *dent;
@@ -97,7 +98,7 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 		sprintf(fn, "%s/%s", path, dent->d_name);
 
 		if (is_dir != 0) {
-			ret = ai_traverse_tree(root, fn, outf, is_dir == 1, filelen);
+			ret = ai_traverse_tree(root, fn, outf, is_dir == 1, filelen, maxpathlen);
 
 			if (ret == ENOTDIR)
 				is_dir = 0;
@@ -107,6 +108,9 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 			if (fwrite(fn, len, 1, outf) != 1)
 				ret = errno;
 			*filelen += len;
+
+			if (*maxpathlen < len)
+				*maxpathlen = len;
 		}
 
 		free(fn);
@@ -133,6 +137,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 	int fd;
 #endif
 	uint64_t len = sizeof(newj) + 1;
+	uint64_t maxpathlen = 0;
 
 	f = fopen(journal_path, "wb");
 	if (!f)
@@ -148,7 +153,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 		return errno;
 	}
 
-	ret = ai_traverse_tree(location, "", f, 1, &len);
+	ret = ai_traverse_tree(location, "", f, 1, &len, &maxpathlen);
 
 	if (!ret) {
 		/* Null-terminate the list. */
@@ -156,6 +161,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 			ret = errno;
 		else {
 			newj.length = len;
+			newj.maxpathlen = maxpathlen - 1;
 
 			rewind(f);
 			if (fwrite(&newj, sizeof(newj), 1, f) < 1)
@@ -221,4 +227,8 @@ int ai_journal_close(journal_t j) {
 
 const char *ai_journal_get_files(journal_t j) {
 	return j->files;
+}
+
+int ai_journal_get_maxpathlen(journal_t j) {
+	return j->maxpathlen;
 }

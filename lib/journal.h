@@ -15,5 +15,6 @@ int ai_journal_open(const char *journal_path, journal_t *ret);
 int ai_journal_close(journal_t j);
 
 const char *ai_journal_get_files(journal_t j);
+int ai_journal_get_maxpathlen(journal_t j);
 
 #endif /*_ATOMIC_INSTALL_JOURNAL_H*/
