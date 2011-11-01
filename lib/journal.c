@@ -47,10 +47,10 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 	struct dirent *dent;
 	int ret;
 
-	fn = malloc(strlen(root) + strlen(path) + 2);
+	fn = malloc(strlen(root) + strlen(path) + 1);
 	if (!fn)
 		return errno;
-	sprintf(fn, "%s/%s", root, path);
+	sprintf(fn, "%s%s", root, path);
 
 	/* We need to check whether it's a directory */
 	if (!is_dir) {
