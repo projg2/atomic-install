@@ -36,7 +36,8 @@ struct ai_journal {
 	uint64_t length; /* file length */
 	uint64_t maxpathlen; /* max filename length */
 
-	char files[]; /* list of null-terminated paths */
+	char files[]; /* list of null-terminated path+filename pairs */
+	/* (terminated by "") */
 };
 
 #pragma pack(pop)
@@ -105,9 +106,14 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 		}
 
 		if (!is_dir) {
-			if (fwrite(fn, len, 1, outf) != 1)
+			const char *fnpart = strrchr(fn, '/') + 1;
+			const size_t pathlen = fnpart - fn;
+
+			if (fwrite(fn, pathlen, 1, outf) != 1
+					|| fputc(0, outf) == EOF
+					|| fwrite(fnpart, len - pathlen, 1, outf) != 1)
 				ret = errno;
-			*filelen += len;
+			*filelen += len + 1;
 
 			if (*maxpathlen < len)
 				*maxpathlen = len;
@@ -225,10 +231,25 @@ int ai_journal_close(journal_t j) {
 	return 0;
 }
 
-const char *ai_journal_get_files(journal_t j) {
+journal_file_t *ai_journal_get_files(journal_t j) {
 	return j->files;
 }
 
 int ai_journal_get_maxpathlen(journal_t j) {
 	return j->maxpathlen;
+}
+
+const char *ai_journal_file_path(journal_file_t *f) {
+	return f;
+}
+
+const char *ai_journal_file_name(journal_file_t *f) {
+	return f + strlen(f) + 1;
+}
+
+journal_file_t *ai_journal_file_next(journal_file_t *f) {
+	const char *next = f + strlen(f) + 1;
+	next += strlen(next) + 1;
+
+	return *next ? next : NULL;
 }
