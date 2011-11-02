@@ -31,10 +31,9 @@
 struct ai_journal {
 	char magic[sizeof(AI_JOURNAL_MAGIC)]; /* AIj!\0 */
 	uint16_t version; /* 0x0000 */
-	uint32_t flags; /* unused right now */
+	uint32_t flags; /* what has been done */
 
 	uint32_t prefix_bits; /* bits used to create filename prefix */
-	uint8_t stage; /* enum */
 
 	uint64_t length; /* file length */
 	uint64_t maxpathlen; /* max filename length */
@@ -274,15 +273,15 @@ ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f) {
 	return *next ? next : NULL;
 }
 
-unsigned char ai_journal_get_stage(ai_journal_t j) {
-	return j->stage;
+unsigned char ai_journal_get_flags(ai_journal_t j) {
+	return j->flags;
 }
 
-int ai_journal_set_stage(ai_journal_t j, unsigned char new_stage) {
+int ai_journal_set_flag(ai_journal_t j, unsigned char new_flag) {
 	if (mprotect(j, sizeof(struct ai_journal), PROT_READ|PROT_WRITE))
 		return errno;
 
-	j->stage = new_stage;
+	j->flags |= new_flag;
 
 	if (msync(j, sizeof(struct ai_journal), MS_SYNC))
 		return errno;
@@ -290,4 +289,3 @@ int ai_journal_set_stage(ai_journal_t j, unsigned char new_stage) {
 
 	return 0;
 }
-

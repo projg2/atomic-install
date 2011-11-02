@@ -9,11 +9,10 @@
 
 #include "journal.h"
 
-enum ai_merge_stage {
-	AI_MERGE_COPY_NEW = 0,
-	AI_MERGE_BACKUP_OLD,
-	AI_MERGE_REPLACE,
-	AI_MERGE_CLEANUP
+enum ai_merge_flags {
+	AI_MERGE_COPIED_NEW = 1,
+	AI_MERGE_BACKED_OLD_UP = 2,
+	AI_MERGE_REPLACED = 4
 };
 
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j);

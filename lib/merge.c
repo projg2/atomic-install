@@ -60,13 +60,19 @@ static int ai_mkdir_cp(char *source, char *dest, const char *path) {
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
+	/* maxpathlen covers path + filename, + 1 for null terminator */
 	const size_t oldpathlen = strlen(source) + maxpathlen + 1;
+	/* + .<fn-prefix>~ + .new */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
 	char *oldpathbuf, *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
+
+	/* Already done? */
+	if (ai_journal_get_flags(j) & AI_MERGE_COPIED_NEW)
+		return EINVAL;
 
 	oldpathbuf = malloc(oldpathlen);
 	if (!oldpathbuf)
@@ -100,8 +106,9 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 	free(oldpathbuf);
 	free(newpathbuf);
 
+	/* Mark as done. */
 	if (!ret)
-		ret = ai_journal_set_stage(j, AI_MERGE_BACKUP_OLD);
+		ret = ai_journal_set_flag(j, AI_MERGE_COPIED_NEW);
 
 	return ret;
 }
