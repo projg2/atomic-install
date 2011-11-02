@@ -10,7 +10,7 @@
 #include "lib/merge.h"
 
 int main(int argc, char *argv[]) {
-	journal_t j;
+	ai_journal_t j;
 	int ret;
 
 	if (argc < 4) {

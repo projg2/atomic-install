@@ -15,8 +15,8 @@ ai_journal_file_path
 ai_journal_get_files
 ai_journal_get_maxpathlen
 ai_journal_open
-journal_file_t
-journal_t
+ai_journal_file_t
+ai_journal_t
 </SECTION>
 
 <SECTION>

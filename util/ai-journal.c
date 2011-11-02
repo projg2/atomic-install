@@ -18,13 +18,13 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (argc < 3) {
-		journal_t j;
+		ai_journal_t j;
 
 		ret = ai_journal_open(argv[1], &j);
 		if (ret)
 			printf("Journal open failed: %s\n", strerror(ret));
 		else {
-			journal_file_t *p;
+			ai_journal_file_t *p;
 
 			for (p = ai_journal_get_files(j); p; p = ai_journal_file_next(p))
 				printf("%s%s\n", ai_journal_file_path(p), ai_journal_file_name(p));

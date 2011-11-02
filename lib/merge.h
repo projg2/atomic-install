@@ -7,6 +7,8 @@
 #ifndef _ATOMIC_INSTALL_MERGE_H
 #define _ATOMIC_INSTALL_MERGE_H
 
+#include "journal.h"
+
 enum ai_merge_stage {
 	AI_MERGE_COPY_NEW,
 	AI_MERGE_BACKUP_OLD,
@@ -14,6 +16,6 @@ enum ai_merge_stage {
 	AI_MERGE_CLEANUP
 };
 
-int ai_merge_copy_new(const char *source, const char *dest, journal_t j);
+int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j);
 
 #endif /*_ATOMIC_INSTALL_MERGE_H*/

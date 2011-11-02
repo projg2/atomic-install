@@ -17,13 +17,13 @@
 #	include <stdint.h>
 #endif
 
-int ai_merge_copy_new(const char *source, const char *dest, journal_t j) {
+int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const size_t oldpathlen = strlen(source) + maxpathlen + 1;
 	const size_t newpathlen = strlen(dest) + maxpathlen + 1;
 
 	char *oldpathbuf, *newpathbuf;
-	journal_file_t *pp;
+	ai_journal_file_t *pp;
 
 	int ret = 0;
 

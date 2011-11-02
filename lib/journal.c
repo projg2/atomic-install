@@ -184,7 +184,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 	return ret;
 }
 
-int ai_journal_open(const char *journal_path, journal_t *ret) {
+int ai_journal_open(const char *journal_path, ai_journal_t *ret) {
 	int fd;
 	struct stat st;
 	int retval = 0;
@@ -224,30 +224,30 @@ int ai_journal_open(const char *journal_path, journal_t *ret) {
 	return retval;
 }
 
-int ai_journal_close(journal_t j) {
+int ai_journal_close(ai_journal_t j) {
 	if (munmap(j, j->length))
 		return errno;
 
 	return 0;
 }
 
-journal_file_t *ai_journal_get_files(journal_t j) {
+ai_journal_file_t *ai_journal_get_files(ai_journal_t j) {
 	return j->files;
 }
 
-int ai_journal_get_maxpathlen(journal_t j) {
+int ai_journal_get_maxpathlen(ai_journal_t j) {
 	return j->maxpathlen;
 }
 
-const char *ai_journal_file_path(journal_file_t *f) {
+const char *ai_journal_file_path(ai_journal_file_t *f) {
 	return f;
 }
 
-const char *ai_journal_file_name(journal_file_t *f) {
+const char *ai_journal_file_name(ai_journal_file_t *f) {
 	return f + strlen(f) + 1;
 }
 
-journal_file_t *ai_journal_file_next(journal_file_t *f) {
+ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f) {
 	const char *next = f + strlen(f) + 1;
 	next += strlen(next) + 1;
 
