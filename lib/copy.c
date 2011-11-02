@@ -48,6 +48,20 @@ int ai_cp_l(const char *source, const char *dest) {
 	return errno;
 }
 
+/**
+ * ai_cp_symlink
+ * @source: current file path
+ * @dest: new complete file path
+ * @symlen: symlink length (obligatory)
+ *
+ * Create a copy of symlink @source at @dest. The @symlen should state the exact
+ * length of the symlink (as reported by lstat()) as it is used for buffer
+ * allocation.
+ *
+ * If @symlen is too small, the function returns EINVAL.
+ *
+ * Returns: 0 on success, errno on failure
+ */
 static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 	static char *buf = NULL;
 	static ssize_t bufsize;
@@ -77,6 +91,16 @@ static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 #	define AI_BUFSIZE 65536
 #endif
 
+/**
+ * ai_splice
+ * @fd_in: input fd
+ * @fd_out: output fd
+ *
+ * Copy a block of data from @fd_in to @fd_out.
+ *
+ * Returns: positive number on success, 0 on EOF, -1 on failure
+ *	(and errno is set then)
+ */
 static int ai_splice(int fd_in, int fd_out) {
 	static char buf[AI_BUFSIZE];
 	char *bufp = buf;
@@ -104,6 +128,21 @@ static int ai_splice(int fd_in, int fd_out) {
 	return wr;
 }
 
+/**
+ * ai_cp_reg
+ * @source: current file path
+ * @dest: new complete file path
+ * @expsize: expected file length (for preallocation)
+ *
+ * Copies the contents of @source to a new file at @dest (@dest is unlinked
+ * first).
+ *
+ * The destination file will be preallocated to size @expsize if possible.
+ * However, this is no hard limit and the actual file length may be larger.
+ * If it shorter, the file may be padded.
+ *
+ * Returns: 0 on success, errno on failure
+ */
 static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	int fd_in, fd_out;
 	int ret = 0, splret;
@@ -149,6 +188,15 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	return ret;
 }
 
+/**
+ * ai_cp_stat
+ * @dest: destination file
+ * @st: struct with lstat() results
+ *
+ * Set ownership, permissions and timestamps from @st to destination file @dest.
+ *
+ * Returns: 0 on success, errno on failure
+ */
 static int ai_cp_stat(const char *dest, struct stat st) {
 	int ret;
 
@@ -209,6 +257,13 @@ static int attr_allow_all(const char *name, struct error_context *err) {
 }
 #endif
 
+/**
+ * ai_cp_attr
+ * @source: source file
+ * @dest: destination file
+ *
+ * Copy extended attributes from @source to @dest.
+ */
 static void ai_cp_attr(const char *source, const char *dest) {
 #ifdef HAVE_LIBATTR
 	attr_copy_file(source, dest, NULL, NULL);
