@@ -14,6 +14,7 @@ ai_journal_file_next
 ai_journal_file_path
 ai_journal_get_files
 ai_journal_get_maxpathlen
+ai_journal_get_filename_prefix
 ai_journal_open
 ai_journal_file_t
 ai_journal_t

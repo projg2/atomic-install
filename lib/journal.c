@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <time.h>
 
 #ifdef HAVE_STDINT_H
 #	include <stdint.h>
@@ -31,6 +32,8 @@ struct ai_journal {
 	char magic[sizeof(AI_JOURNAL_MAGIC)]; /* AIj!\0 */
 	uint16_t version; /* 0x0000 */
 	uint32_t flags; /* unused right now */
+
+	uint32_t prefix_bits; /* bits used to create filename prefix */
 	uint8_t stage; /* enum */
 
 	uint64_t length; /* file length */
@@ -154,6 +157,9 @@ int ai_journal_create(const char *journal_path, const char *location) {
 	lockf(fd, F_LOCK, 0);
 #endif
 
+	srandom(time(NULL));
+	newj.prefix_bits = random();
+
 	if (fwrite(&newj, sizeof(newj), 1, f) < 1) {
 		fclose(f);
 		return errno;
@@ -237,6 +243,20 @@ ai_journal_file_t *ai_journal_get_files(ai_journal_t j) {
 
 int ai_journal_get_maxpathlen(ai_journal_t j) {
 	return j->maxpathlen;
+}
+
+const char *ai_journal_get_filename_prefix(ai_journal_t j) {
+	uint32_t prefix_bits = j->prefix_bits;
+	static char prefix_buf[7] = {0, 0, 0, 0, 0, 0, 0};
+
+	int i;
+
+	for (i = 0; i < 6; i++) {
+		prefix_buf[i] = 'a' + prefix_bits % 26;
+		prefix_bits >>= 5;
+	}
+
+	return prefix_buf;
 }
 
 const char *ai_journal_file_path(ai_journal_file_t *f) {
