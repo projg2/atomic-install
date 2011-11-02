@@ -17,6 +17,46 @@
 #	include <stdint.h>
 #endif
 
+/**
+ * ai_mkdir_cp
+ * @source: source tree path buffer
+ * @dest: dest tree path buffer
+ * @path: path relative to both trees
+ *
+ * Create all missing directories for @path in @dest tree. Copy attributes for
+ * the newly-created directories from @source tree.
+ *
+ * Note that both @source and @dest will be modified during run-time, thus they
+ * have to be writable. The initial contents will be restored on return.
+ *
+ * Returns: 0 on success, errno on failure
+ */
+static int ai_mkdir_cp(char *source, char *dest, const char *path) {
+	char *sp = strrchr(source, '/') - strlen(path) + 1;
+	char *dp = strrchr(dest, '/') - strlen(path) + 1;
+
+	while (sp) {
+		int ret;
+
+		*sp = 0;
+		*dp = 0;
+
+		/* Try to copy the directory entry */
+		ret = ai_cp_a(source, dest);
+
+		*sp = '/';
+		*dp = '/';
+
+		if (ret && ret != EEXIST)
+			return ret;
+
+		sp = strchr(sp+1, '/');
+		dp = strchr(dp+1, '/');
+	}
+
+	return 0;
+}
+
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const size_t oldpathlen = strlen(source) + maxpathlen + 1;
@@ -44,10 +84,16 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 		sprintf(oldpathbuf, "%s%s%s", source, path, name);
 		sprintf(newpathbuf, "%s%s.AI~%s.new", dest, path, name);
 
-		if (ai_cp_l(oldpathbuf, newpathbuf)) {
-			ret = errno;
-			break;
+		ret = ai_cp_l(oldpathbuf, newpathbuf);
+
+		if (ret == ENOENT) {
+			ret = ai_mkdir_cp(oldpathbuf, newpathbuf, path);
+			if (!ret)
+				ret = ai_cp_l(oldpathbuf, newpathbuf);
 		}
+
+		if (ret)
+			break;
 	}
 
 	free(oldpathbuf);
