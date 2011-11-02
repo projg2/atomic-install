@@ -273,11 +273,11 @@ ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f) {
 	return *next ? next : NULL;
 }
 
-unsigned char ai_journal_get_flags(ai_journal_t j) {
+unsigned long int ai_journal_get_flags(ai_journal_t j) {
 	return j->flags;
 }
 
-int ai_journal_set_flag(ai_journal_t j, unsigned char new_flag) {
+int ai_journal_set_flag(ai_journal_t j, unsigned long int new_flag) {
 	if (mprotect(j, sizeof(struct ai_journal), PROT_READ|PROT_WRITE))
 		return errno;
 

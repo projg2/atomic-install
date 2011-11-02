@@ -23,7 +23,7 @@ const char *ai_journal_file_path(ai_journal_file_t *f);
 const char *ai_journal_file_name(ai_journal_file_t *f);
 ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f);
 
-unsigned char ai_journal_get_flags(ai_journal_t j);
-int ai_journal_set_flag(ai_journal_t j, unsigned char new_flag);
+unsigned long int ai_journal_get_flags(ai_journal_t j);
+int ai_journal_set_flag(ai_journal_t j, unsigned long int new_flag);
 
 #endif /*_ATOMIC_INSTALL_JOURNAL_H*/
