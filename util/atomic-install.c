@@ -34,6 +34,10 @@ int main(int argc, char *argv[]) {
 	if (ret)
 		printf("Copying new failed: %s\n", strerror(ret));
 
+	ret = ai_merge_backup_old(argv[3], j);
+	if (ret)
+		printf("Backing old up failed: %s\n", strerror(ret));
+
 	ret = ai_journal_close(j);
 	if (ret)
 		printf("Journal close failed: %s\n", strerror(ret));

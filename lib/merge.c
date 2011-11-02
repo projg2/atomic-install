@@ -112,3 +112,52 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 
 	return ret;
 }
+
+int ai_merge_backup_old(const char *dest, ai_journal_t j) {
+	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
+	const char *fn_prefix = ai_journal_get_filename_prefix(j);
+	/* maxpathlen covers path + filename, + 1 for null terminator */
+	const size_t oldpathlen = strlen(dest) + maxpathlen + 1;
+	/* + .<fn-prefix>~ + .old */
+	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
+
+	char *oldpathbuf, *newpathbuf;
+	ai_journal_file_t *pp;
+
+	int ret = 0;
+
+	/* Already done? */
+	if (ai_journal_get_flags(j) & AI_MERGE_BACKED_OLD_UP)
+		return EINVAL;
+
+	oldpathbuf = malloc(oldpathlen);
+	if (!oldpathbuf)
+		return errno;
+
+	newpathbuf = malloc(newpathlen);
+	if (!newpathbuf) {
+		free(oldpathbuf);
+		return errno;
+	}
+
+	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
+		const char *path = ai_journal_file_path(pp);
+		const char *name = ai_journal_file_name(pp);
+
+		sprintf(oldpathbuf, "%s%s%s", dest, path, name);
+		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
+
+		ret = ai_cp_l(oldpathbuf, newpathbuf);
+		if (ret && ret != ENOENT)
+			break;
+	}
+
+	free(oldpathbuf);
+	free(newpathbuf);
+
+	/* Mark as done. */
+	if (!ret || ret == ENOENT)
+		ret = ai_journal_set_flag(j, AI_MERGE_BACKED_OLD_UP);
+
+	return ret;
+}
