@@ -14,9 +14,13 @@
 /config.log
 /config.status
 /configure
+/doc/
+/gtk-doc.make
 /libtool
 /m4/
 /stamp-h1
 Makefile
 Makefile.in
 util/ai-cp
+util/ai-journal
+util/atomic-install
