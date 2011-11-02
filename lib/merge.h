@@ -10,7 +10,7 @@
 #include "journal.h"
 
 enum ai_merge_stage {
-	AI_MERGE_COPY_NEW,
+	AI_MERGE_COPY_NEW = 0,
 	AI_MERGE_BACKUP_OLD,
 	AI_MERGE_REPLACE,
 	AI_MERGE_CLEANUP

@@ -100,5 +100,8 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 	free(oldpathbuf);
 	free(newpathbuf);
 
+	if (!ret)
+		ret = ai_journal_set_stage(j, AI_MERGE_BACKUP_OLD);
+
 	return ret;
 }

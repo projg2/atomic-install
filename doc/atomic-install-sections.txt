@@ -7,17 +7,19 @@ ai_mv
 
 <SECTION>
 <FILE>journal</FILE>
-ai_journal_close
+ai_journal_t
 ai_journal_create
-ai_journal_file_name
-ai_journal_file_next
-ai_journal_file_path
-ai_journal_get_files
+ai_journal_open
+ai_journal_close
 ai_journal_get_maxpathlen
 ai_journal_get_filename_prefix
-ai_journal_open
 ai_journal_file_t
-ai_journal_t
+ai_journal_get_files
+ai_journal_file_name
+ai_journal_file_path
+ai_journal_file_next
+ai_journal_get_stage
+ai_journal_set_stage
 </SECTION>
 
 <SECTION>

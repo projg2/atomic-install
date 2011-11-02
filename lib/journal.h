@@ -22,4 +22,8 @@ const char *ai_journal_get_filename_prefix(ai_journal_t j);
 const char *ai_journal_file_path(ai_journal_file_t *f);
 const char *ai_journal_file_name(ai_journal_file_t *f);
 ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f);
+
+unsigned char ai_journal_get_stage(ai_journal_t j);
+int ai_journal_set_stage(ai_journal_t j, unsigned char new_stage);
+
 #endif /*_ATOMIC_INSTALL_JOURNAL_H*/

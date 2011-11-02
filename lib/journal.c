@@ -273,3 +273,21 @@ ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f) {
 
 	return *next ? next : NULL;
 }
+
+unsigned char ai_journal_get_stage(ai_journal_t j) {
+	return j->stage;
+}
+
+int ai_journal_set_stage(ai_journal_t j, unsigned char new_stage) {
+	if (mprotect(j, sizeof(struct ai_journal), PROT_READ|PROT_WRITE))
+		return errno;
+
+	j->stage = new_stage;
+
+	if (msync(j, sizeof(struct ai_journal), MS_SYNC))
+		return errno;
+	mprotect(j, sizeof(struct ai_journal), PROT_READ);
+
+	return 0;
+}
+
