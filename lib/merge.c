@@ -161,3 +161,59 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 
 	return ret;
 }
+
+int ai_merge_replace(const char *dest, ai_journal_t j) {
+	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
+	const uint32_t j_flags = ai_journal_get_flags(j);
+	const char *fn_prefix = ai_journal_get_filename_prefix(j);
+	/* maxpathlen covers path + filename, + 1 for null terminator */
+	const size_t newpathlen = strlen(dest) + maxpathlen + 1;
+	/* + .<fn-prefix>~ + .new */
+	const size_t oldpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
+
+	char *oldpathbuf, *newpathbuf;
+	ai_journal_file_t *pp;
+
+	int ret = 0;
+
+	/* New files have to be copied already... */
+	if (!(j_flags & AI_MERGE_COPIED_NEW))
+		return EINVAL;
+	/* ...and backup needs to be done. */
+	if (!(j_flags & AI_MERGE_BACKED_OLD_UP))
+		return EINVAL;
+	/* Well, make sure we didn't do it before too. */
+	if (j_flags & AI_MERGE_REPLACED)
+		return EINVAL;
+
+	oldpathbuf = malloc(oldpathlen);
+	if (!oldpathbuf)
+		return errno;
+
+	newpathbuf = malloc(newpathlen);
+	if (!newpathbuf) {
+		free(oldpathbuf);
+		return errno;
+	}
+
+	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
+		const char *path = ai_journal_file_path(pp);
+		const char *name = ai_journal_file_name(pp);
+
+		sprintf(oldpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
+		sprintf(newpathbuf, "%s%s%s", dest, path, name);
+
+		ret = ai_mv(oldpathbuf, newpathbuf);
+		if (ret)
+			break;
+	}
+
+	free(oldpathbuf);
+	free(newpathbuf);
+
+	/* Mark as done. */
+	if (!ret)
+		ret = ai_journal_set_flag(j, AI_MERGE_REPLACED);
+
+	return ret;
+}

@@ -26,4 +26,5 @@ ai_journal_set_flag
 <FILE>merge</FILE>
 ai_merge_copy_new
 ai_merge_backup_old
+ai_merge_replace
 </SECTION>
