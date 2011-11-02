@@ -155,30 +155,35 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 	if (lchown(dest, st.st_uid, st.st_gid))
 		return errno;
 
+	/* there's no point in copying directory mtime,
+	 * it will be modified when copying files anyway */
+	if (!S_ISDIR(st.st_mode)) {
 #ifdef HAVE_UTIMENSAT
-	{
 		struct timespec ts[2];
 
 		ts[0] = st.st_atim;
 		ts[1] = st.st_mtim;
 		if (utimensat(AT_FDCWD, dest, ts, AT_SYMLINK_NOFOLLOW))
 			return errno;
-	}
 #else
-	if (!S_ISLNK(st.st_mode)) {
-		struct utimbuf ts;
+		/* utime() can't handle touching symlinks */
+		if (!S_ISLNK(st.st_mode)) {
+			struct utimbuf ts;
 
-		ts.actime = st.st_atime;
-		ts.modtime = st.st_mtime;
-		if (utime(dest, &ts))
-			return errno;
-	}
+			ts.actime = st.st_atime;
+			ts.modtime = st.st_mtime;
+			if (utime(dest, &ts))
+				return errno;
+		}
 #endif
+	}
 
 #ifdef HAVE_FCHMODAT
 	ret = fchmodat(AT_FDCWD, dest, st.st_mode, AT_SYMLINK_NOFOLLOW);
 
 	if (!ret);
+	/* fchmodat() may or may not support touching symlinks,
+	 * if it doesn't, fall back to chmod() */
 	else if (errno != EINVAL
 #ifdef EOPNOTSUPP /* POSIX-2008 */
 			&& errno != EOPNOTSUPP
@@ -223,7 +228,12 @@ int ai_cp_a(const char *source, const char *dest) {
 		ret = ai_cp_symlink(source, dest, st.st_size);
 	else if (S_ISREG(st.st_mode))
 		ret = ai_cp_reg(source, dest, st.st_size);
-	else
+	else if (S_ISDIR(st.st_mode)) {
+		if (mkdir(dest, 0755))
+			ret = errno;
+		else
+			ret = 0;
+	} else
 		return EINVAL;
 
 	if (!ret) {

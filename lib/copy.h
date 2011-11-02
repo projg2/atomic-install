@@ -38,6 +38,10 @@ int ai_cp_l(const char *source, const char *dest);
  * permissions, extended attributes, mtime. Try to copy as fast as possible
  * but always create a new file.
  *
+ * If @source is a directory, then a new directory will be created at @dest,
+ * and permissions and extended attributes will be copied from @source.
+ * The destination directory must not exist.
+ *
  * @return: 0 on success, errno value on failure.
  */
 int ai_cp_a(const char *source, const char *dest);
