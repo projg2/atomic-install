@@ -15,6 +15,8 @@ ai_journal_get_maxpathlen
 ai_journal_get_filename_prefix
 ai_journal_file_t
 ai_journal_get_files
+ai_journal_file_flags
+ai_journal_file_set_flag
 ai_journal_file_name
 ai_journal_file_path
 ai_journal_file_next
