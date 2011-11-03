@@ -11,7 +11,7 @@
 
 int main(int argc, char *argv[]) {
 	ai_journal_t j;
-	int ret;
+	int ret, ret2;
 
 	if (argc < 4) {
 		printf("Synopsis: atomic-install journal source dest\n");
@@ -30,21 +30,29 @@ int main(int argc, char *argv[]) {
 		return ret;
 	}
 
-	ret = ai_merge_copy_new(argv[2], argv[3], j);
-	if (ret)
-		printf("Copying new failed: %s\n", strerror(ret));
+	do {
+		ret = ai_merge_copy_new(argv[2], argv[3], j);
+		if (ret) {
+			printf("Copying new failed: %s\n", strerror(ret));
+			break;
+		}
 
-	ret = ai_merge_backup_old(argv[3], j);
-	if (ret)
-		printf("Backing old up failed: %s\n", strerror(ret));
+		ret = ai_merge_backup_old(argv[3], j);
+		if (ret) {
+			printf("Backing old up failed: %s\n", strerror(ret));
+			break;
+		}
 
-	ret = ai_merge_replace(argv[3], j);
-	if (ret)
-		printf("Replacement failed: %s\n", strerror(ret));
+		ret = ai_merge_replace(argv[3], j);
+		if (ret) {
+			printf("Replacement failed: %s\n", strerror(ret));
+			break;
+		}
+	} while (0);
 
-	ret = ai_journal_close(j);
-	if (ret)
+	ret2 = ai_journal_close(j);
+	if (ret2)
 		printf("Journal close failed: %s\n", strerror(ret));
 
-	return ret;
+	return ret || ret2;
 }
