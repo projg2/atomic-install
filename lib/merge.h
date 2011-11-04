@@ -15,6 +15,10 @@ enum ai_merge_flags {
 	AI_MERGE_REPLACED = 4
 };
 
+enum ai_merge_file_flags {
+	AI_MERGE_FILE_BACKED_UP = 1
+};
+
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j);
 int ai_merge_backup_old(const char *dest, ai_journal_t j);
 int ai_merge_replace(const char *dest, ai_journal_t j);

@@ -148,6 +148,8 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 
 		ret = ai_cp_l(oldpathbuf, newpathbuf);
+		if (!ret)
+			ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_BACKED_UP);
 		if (ret && ret != ENOENT)
 			break;
 	}
