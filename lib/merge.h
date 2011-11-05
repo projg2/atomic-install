@@ -12,7 +12,8 @@
 enum ai_merge_flags {
 	AI_MERGE_COPIED_NEW = 1,
 	AI_MERGE_BACKED_OLD_UP = 2,
-	AI_MERGE_REPLACED = 4
+	AI_MERGE_REPLACED = 4,
+	AI_MERGE_ROLLBACK_STARTED = 8
 };
 
 enum ai_merge_file_flags {

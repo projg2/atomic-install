@@ -43,11 +43,24 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 
+#if 0
 		ret = ai_merge_replace(argv[3], j);
 		if (ret) {
 			printf("Replacement failed: %s\n", strerror(ret));
 			break;
 		}
+#else
+		ret = ai_merge_rollback_old(argv[3], j);
+		if (ret) {
+			printf("Old rollback failed: %s\n", strerror(ret));
+			break;
+		}
+		ret = ai_merge_rollback_new(argv[3], j);
+		if (ret) {
+			printf("New rollback failed: %s\n", strerror(ret));
+			break;
+		}
+#endif
 	} while (0);
 
 	ret2 = ai_journal_close(j);
