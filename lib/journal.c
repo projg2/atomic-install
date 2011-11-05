@@ -292,6 +292,10 @@ unsigned long int ai_journal_get_flags(ai_journal_t j) {
 }
 
 int ai_journal_set_flag(ai_journal_t j, unsigned long int new_flag) {
+#ifdef HAVE_SYNC
+	sync();
+#endif
+
 	j->flags |= new_flag;
 
 	/* sync whole to update file flags as well */
