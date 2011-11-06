@@ -43,10 +43,16 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 
-#if 0
+#if 1
 		ret = ai_merge_replace(argv[3], j);
 		if (ret) {
 			printf("Replacement failed: %s\n", strerror(ret));
+			break;
+		}
+
+		ret = ai_merge_cleanup(argv[3], j);
+		if (ret) {
+			printf("Cleanup failed: %s\n", strerror(ret));
 			break;
 		}
 #else

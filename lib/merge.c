@@ -371,3 +371,42 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 
 	return ret == ENOENT ? 0 : ret;
 }
+
+int ai_merge_cleanup(const char *dest, ai_journal_t j) {
+	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
+	const char *fn_prefix = ai_journal_get_filename_prefix(j);
+	/* maxpathlen covers path + filename, + 1 for null terminator
+	 * + .<fn-prefix>~ + .old */
+	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
+
+	char *newpathbuf;
+	ai_journal_file_t *pp;
+
+	int ret = 0;
+
+	if (!(ai_journal_get_flags(j) & AI_MERGE_REPLACED))
+		return EINVAL;
+
+	newpathbuf = malloc(newpathlen);
+	if (!newpathbuf)
+		return errno;
+
+	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
+		const char *path = ai_journal_file_path(pp);
+		const char *name = ai_journal_file_name(pp);
+
+		if (!(ai_journal_file_flags(pp) & AI_MERGE_FILE_BACKED_UP))
+			continue;
+
+		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
+
+		if (unlink(newpathbuf) && errno != ENOENT) {
+			ret = errno;
+			break;
+		}
+	}
+
+	free(newpathbuf);
+
+	return ret;
+}

@@ -23,6 +23,7 @@ enum ai_merge_file_flags {
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j);
 int ai_merge_backup_old(const char *dest, ai_journal_t j);
 int ai_merge_replace(const char *dest, ai_journal_t j);
+int ai_merge_cleanup(const char *dest, ai_journal_t j);
 
 int ai_merge_rollback_old(const char *dest, ai_journal_t j);
 int ai_merge_rollback_new(const char *dest, ai_journal_t j);
