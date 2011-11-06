@@ -39,7 +39,7 @@ struct ai_journal {
 	uint64_t length; /* file length */
 	uint64_t maxpathlen; /* max filename length */
 
-	char files[]; /* list of null-terminated path+filename pairs */
+	unsigned char files[]; /* list of null-terminated path+filename pairs */
 	/* (terminated by AI_JOURNAL_EOF) */
 };
 
@@ -239,7 +239,7 @@ int ai_journal_close(ai_journal_t j) {
 }
 
 ai_journal_file_t *ai_journal_get_files(ai_journal_t j) {
-	return j->files;
+	return *(j->files) != AI_JOURNAL_EOF ? j->files : NULL;
 }
 
 int ai_journal_get_maxpathlen(ai_journal_t j) {
