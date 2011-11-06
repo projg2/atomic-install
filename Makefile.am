@@ -9,6 +9,8 @@ lib_LTLIBRARIES = lib/libai-copy.la lib/libai-journal.la lib/libai-merge.la
 aiinclude_HEADERS = lib/copy.h lib/journal.h lib/merge.h
 
 lib_libai_copy_la_SOURCES = lib/copy.c lib/copy.h
+lib_libai_copy_la_LIBADD = $(ATTR_LIBS)
+
 lib_libai_journal_la_SOURCES = lib/journal.c lib/journal.h
 
 lib_libai_merge_la_SOURCES = lib/merge.c lib/merge.h

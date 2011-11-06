@@ -24,7 +24,10 @@ AC_ARG_ENABLE([libattr],
 	[AS_HELP_STRING([--disable-libattr],
 		[Disable use of libattr (default: autodetect)])])
 AS_IF([test x"$enable_libattr" != x"no"], [
-	AC_CHECK_LIB([attr], [attr_copy_file])
+	AC_CHECK_LIB([attr], [attr_copy_file], [
+		AC_DEFINE([HAVE_LIBATTR], [1], [define if you have libattr])
+		AC_SUBST([ATTR_LIBS], [-lattr])
+	])
 ])
 
 AC_ARG_ENABLE([debug],
