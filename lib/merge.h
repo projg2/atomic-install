@@ -26,5 +26,6 @@ int ai_merge_replace(const char *dest, ai_journal_t j);
 
 int ai_merge_rollback_old(const char *dest, ai_journal_t j);
 int ai_merge_rollback_new(const char *dest, ai_journal_t j);
+int ai_merge_rollback_replace(const char *dest, ai_journal_t j);
 
 #endif /*_ATOMIC_INSTALL_MERGE_H*/

@@ -211,13 +211,17 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 	/* maxpathlen covers path + filename, + 1 for null terminator
 	 * + .<fn-prefix>~ + .old */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
+	const uint32_t flags = ai_journal_get_flags(j);
 
 	char *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
 
-	if (!(ai_journal_get_flags(j) & AI_MERGE_BACKED_OLD_UP))
+	if (!(flags & AI_MERGE_BACKED_OLD_UP))
+		return EINVAL;
+	/* now, replace could be started already; we need to rollback that instead */
+	if (flags & AI_MERGE_COPIED_NEW)
 		return EINVAL;
 
 	/* Mark rollback as started. */
@@ -302,4 +306,68 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 		ret = ai_journal_set_flag(j, AI_MERGE_REPLACED);
 
 	return ret;
+}
+
+int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
+	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
+	const uint32_t j_flags = ai_journal_get_flags(j);
+	const char *fn_prefix = ai_journal_get_filename_prefix(j);
+	/* maxpathlen covers path + filename, + 1 for null terminator */
+	const size_t newpathlen = strlen(dest) + maxpathlen + 1;
+	/* + .<fn-prefix>~ + .old */
+	const size_t oldpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
+
+	char *oldpathbuf, *newpathbuf;
+	ai_journal_file_t *pp;
+
+	int ret = 0;
+
+	/* New files have to be copied already... */
+	if (!(j_flags & AI_MERGE_COPIED_NEW))
+		return EINVAL;
+	/* ...and backup needs to be done. */
+	if (!(j_flags & AI_MERGE_BACKED_OLD_UP))
+		return EINVAL;
+	/* Well, make sure replace didn't finish before too. */
+	if (j_flags & AI_MERGE_REPLACED)
+		return EINVAL;
+
+	oldpathbuf = malloc(oldpathlen);
+	if (!oldpathbuf)
+		return errno;
+
+	newpathbuf = malloc(newpathlen);
+	if (!newpathbuf) {
+		free(oldpathbuf);
+		return errno;
+	}
+
+	/* Mark rollback as started. */
+	ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
+	if (ret)
+		return ret;
+
+	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
+		const char *path = ai_journal_file_path(pp);
+		const char *name = ai_journal_file_name(pp);
+
+		/* if backed up, then restore */
+		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_BACKED_UP) {
+			sprintf(oldpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
+			sprintf(newpathbuf, "%s%s%s", dest, path, name);
+
+			ret = ai_mv(oldpathbuf, newpathbuf);
+		} else { /* just unlink the new one */
+			if (unlink(newpathbuf))
+				ret = errno;
+		}
+
+		if (ret && ret != ENOENT)
+			break;
+	}
+
+	free(oldpathbuf);
+	free(newpathbuf);
+
+	return ret == ENOENT ? 0 : ret;
 }

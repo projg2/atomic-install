@@ -31,4 +31,5 @@ ai_merge_backup_old
 ai_merge_replace
 ai_merge_rollback_old
 ai_merge_rollback_new
+ai_merge_rollback_replace
 </SECTION>
