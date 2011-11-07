@@ -34,7 +34,7 @@ struct ai_journal {
 	uint16_t version; /* 0x0000 */
 	uint32_t flags; /* what has been done */
 
-	uint32_t prefix_bits; /* bits used to create filename prefix */
+	char prefix[7]; /* filename prefix */
 
 	uint64_t length; /* file length */
 	uint64_t maxpathlen; /* max filename length */
@@ -138,6 +138,26 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 	return ret;
 }
 
+/**
+ * ai_journal_set_filename_prefix
+ * @out: output buffer, at least 7 bytes long
+ * @bits: input bitdata for the prefix
+ *
+ * Create the prefix used for temporary files associated with the journal from
+ * @bits and write it to @out. @out must be at least 7 bytes long.
+ */
+static void ai_journal_set_filename_prefix(char *out, long int bits) {
+	int i;
+
+	for (i = 0; i < 6; i++) {
+		out[i] = 'a' + bits % 26;
+		bits >>= 5;
+	}
+
+	/* Null-terminate. */
+	out[i] = 0;
+}
+
 int ai_journal_create(const char *journal_path, const char *location) {
 	struct ai_journal newj = { AI_JOURNAL_MAGIC, 0x0000, 0, 0 };
 
@@ -159,7 +179,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 #endif
 
 	srandom(time(NULL));
-	newj.prefix_bits = random();
+	ai_journal_set_filename_prefix(newj.prefix, random());
 
 	if (fwrite(&newj, sizeof(newj), 1, f) < 1) {
 		fclose(f);
@@ -247,17 +267,7 @@ int ai_journal_get_maxpathlen(ai_journal_t j) {
 }
 
 const char *ai_journal_get_filename_prefix(ai_journal_t j) {
-	uint32_t prefix_bits = j->prefix_bits;
-	static char prefix_buf[7] = {0, 0, 0, 0, 0, 0, 0};
-
-	int i;
-
-	for (i = 0; i < 6; i++) {
-		prefix_buf[i] = 'a' + prefix_bits % 26;
-		prefix_bits >>= 5;
-	}
-
-	return prefix_buf;
+	return j->prefix;
 }
 
 unsigned char ai_journal_file_flags(ai_journal_file_t *f) {

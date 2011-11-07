@@ -83,7 +83,7 @@ int ai_journal_get_maxpathlen(ai_journal_t j);
  * Get the random prefix used for temporary files associated with this journal
  * (session).
  *
- * Returns: a pointer to static buffer with filename prefix
+ * Returns: a pointer to null-terminated prefix in the journal
  */
 const char *ai_journal_get_filename_prefix(ai_journal_t j);
 
