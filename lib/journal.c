@@ -23,28 +23,70 @@
 #	include <stdint.h>
 #endif
 
+/**
+ * AI_JOURNAL_MAGIC
+ *
+ * Magic used to identify the journal.
+ */
 #define AI_JOURNAL_MAGIC "AIj!"
-const unsigned char AI_JOURNAL_EOF = 0xff;
+/**
+ * AI_JOURNAL_EOF
+ *
+ * Special filename bits used to identify end of filelist.
+ */
+static const unsigned char AI_JOURNAL_EOF = 0xff;
 
 #pragma pack(push)
 #pragma pack(1)
 
+/**
+ * ai_journal
+ * @magic: %AI_JOURNAL_MAGIC
+ * @version: journal format version, 0x0000 right now
+ * @flags: global journal 32-bit flags field, for use by caller
+ * @prefix: random prefix for temporary files associated with journal
+ * @length: exact journal file length, in bytes
+ * @maxpathlen: max length of path+filename in journal
+ * @files: array of (flag + path + \0 + filename + \0), terminated
+ *	by %AI_JOURNAL_EOF (on flag field)
+ *
+ * The journal format.
+ */
 struct ai_journal {
-	char magic[sizeof(AI_JOURNAL_MAGIC)]; /* AIj!\0 */
-	uint16_t version; /* 0x0000 */
-	uint32_t flags; /* what has been done */
+	char magic[sizeof(AI_JOURNAL_MAGIC)];
+	uint16_t version;
+	uint32_t flags;
 
-	char prefix[7]; /* filename prefix */
+	char prefix[7];
 
-	uint64_t length; /* file length */
-	uint64_t maxpathlen; /* max filename length */
+	uint64_t length;
+	uint64_t maxpathlen;
 
-	unsigned char files[]; /* list of null-terminated path+filename pairs */
-	/* (terminated by AI_JOURNAL_EOF) */
+	unsigned char files[];
 };
 
 #pragma pack(pop)
 
+/**
+ * ai_traverse_tree
+ * @root: source tree root
+ * @path: current subdirectory in source tree
+ * @outf: open journal file
+ * @is_dir: 1 if @path is certainly a directory, 0 otherwise
+ * @filelen: location to update journal file length in
+ * @maxpathlen: location to update max filename length in
+ *
+ * Traverse recursively a subtree of source tree @root/@path. If it's
+ * a directory, recurse into it; otherwise, write it to the journal file @outf
+ * and update @filelen and @maxpathlen as necessary.
+ *
+ * If @is_dir is passed zero, this function lstats the path to check whether
+ * it's a directory (to avoid opening symlinks to directories); otherwise, it
+ * just assumes caller has ensured it is a directory.
+ *
+ * Returns: 0 on success, ENOTDIR if called recursively on a non-directory,
+ *	errno otherwise
+ */
 static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int is_dir, uint64_t *filelen, uint64_t *maxpathlen) {
 	char *fn;
 	DIR *dir;
