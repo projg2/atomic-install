@@ -57,6 +57,20 @@ static int ai_mkdir_cp(char *source, char *dest, const char *path) {
 	return 0;
 }
 
+/**
+ * ai_merge_constraint_flags
+ * @j: an open journal
+ * @required: flags which have to be set in the journal
+ * @unallowed: flags which can't be set in the journal
+ *
+ * Check the flags field of journal @j for @required and @unallowed flags.
+ *
+ * Returns: true if all required flags are set and unallowed aren't, false otherwise
+ */
+static int ai_merge_constraint_flags(ai_journal_t j, uint32_t required, uint32_t unallowed) {
+	return (ai_journal_get_flags(j) & (required|unallowed)) == required;
+}
+
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
@@ -70,7 +84,7 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 
 	int ret = 0;
 
-	if (ai_journal_get_flags(j) & (AI_MERGE_COPIED_NEW|AI_MERGE_ROLLBACK_STARTED))
+	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_COPIED_NEW|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
 	oldpathbuf = malloc(oldpathlen);
@@ -123,7 +137,7 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 
 	int ret = 0;
 
-	if (!(ai_journal_get_flags(j) & AI_MERGE_COPIED_NEW))
+	if (!ai_merge_constraint_flags(j, AI_MERGE_COPIED_NEW, 0))
 		return EINVAL;
 
 	/* Mark rollback as started. */
@@ -168,7 +182,7 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 	int ret = 0;
 
 	/* Already done? */
-	if (ai_journal_get_flags(j) & (AI_MERGE_BACKED_OLD_UP|AI_MERGE_ROLLBACK_STARTED))
+	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_BACKED_OLD_UP|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
 	oldpathbuf = malloc(oldpathlen);
@@ -218,10 +232,8 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 
 	int ret = 0;
 
-	if (!(flags & AI_MERGE_BACKED_OLD_UP))
-		return EINVAL;
-	/* now, replace could be started already; we need to rollback that instead */
-	if (flags & AI_MERGE_COPIED_NEW)
+	/* replace could be started already; we need to rollback that instead */
+	if (!ai_merge_constraint_flags(j, AI_MERGE_BACKED_OLD_UP, AI_MERGE_COPIED_NEW))
 		return EINVAL;
 
 	/* Mark rollback as started. */
@@ -266,14 +278,9 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 
 	int ret = 0;
 
-	/* New files have to be copied already... */
-	if (!(j_flags & AI_MERGE_COPIED_NEW))
-		return EINVAL;
-	/* ...and backup needs to be done. */
-	if (!(j_flags & AI_MERGE_BACKED_OLD_UP))
-		return EINVAL;
-	/* Well, make sure we didn't do it before too. */
-	if (j_flags & (AI_MERGE_REPLACED|AI_MERGE_ROLLBACK_STARTED))
+	if (!ai_merge_constraint_flags(j,
+				AI_MERGE_COPIED_NEW|AI_MERGE_BACKED_OLD_UP,
+				AI_MERGE_REPLACED|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
 	oldpathbuf = malloc(oldpathlen);
@@ -322,14 +329,9 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 
 	int ret = 0;
 
-	/* New files have to be copied already... */
-	if (!(j_flags & AI_MERGE_COPIED_NEW))
-		return EINVAL;
-	/* ...and backup needs to be done. */
-	if (!(j_flags & AI_MERGE_BACKED_OLD_UP))
-		return EINVAL;
-	/* Well, make sure replace didn't finish before too. */
-	if (j_flags & AI_MERGE_REPLACED)
+	if (!ai_merge_constraint_flags(j,
+				AI_MERGE_COPIED_NEW|AI_MERGE_BACKED_OLD_UP,
+				AI_MERGE_REPLACED))
 		return EINVAL;
 
 	oldpathbuf = malloc(oldpathlen);
@@ -384,7 +386,7 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j) {
 
 	int ret = 0;
 
-	if (!(ai_journal_get_flags(j) & AI_MERGE_REPLACED))
+	if (!ai_merge_constraint_flags(j, AI_MERGE_REPLACED, 0))
 		return EINVAL;
 
 	newpathbuf = malloc(newpathlen);
