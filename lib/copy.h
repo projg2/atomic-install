@@ -1,4 +1,4 @@
-/* libcopy -- high-level copying helper
+/* atomic-install -- high-level copying helper
  * (c) 2011 Michał Górny
  * 2-clause BSD-licensed
  */
@@ -12,7 +12,7 @@
  * @short_description: Utility functions to copy and move files
  * @include: atomic-install/copy.h
  *
- * libcopy provides a few convenience functions to copy and move files,
+ * libai-copy provides a few convenience functions to copy and move files,
  * preserving their ownership, permissions, mtimes and extended attributes.
  */
 

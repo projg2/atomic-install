@@ -1,4 +1,4 @@
-/* libcopy -- journal support
+/* atomic-install -- journal support
  * (c) 2011 Michał Górny
  * 2-clause BSD-licensed
  */
