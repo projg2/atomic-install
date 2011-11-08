@@ -51,10 +51,30 @@ typedef enum {
 } ai_merge_file_flags_t;
 
 /**
+ * ai_merge_progress_callback_t
+ * @path: relative path to the file being processed
+ * @megs: number of mebibytes copied already
+ * @total: file size in mebibytes
+ *
+ * Progress callback function. Called:
+ * - before the file is copied - @megs = 0,
+ * - while copying large files - @megs != 0,
+ * - after copying large file - @megs = @total.
+ *
+ * One can assume that if at least one @megs != 0 is called, there will be one
+ * @megs = @total as well.
+ */
+typedef void (*ai_merge_progress_callback_t)(
+		const char *path,
+		unsigned long int megs,
+		unsigned long int total);
+
+/**
  * ai_merge_copy_new
  * @source: path to the source tree
  * @dest: path to the destination tree
  * @j: an open journal
+ * @progress_callback: callback function for progress reporting, or %NULL
  *
  * Copy files from the source tree at @source to the destination tree at @dest.
  * The new files will be written as temporary files with .new suffix.
@@ -66,7 +86,8 @@ typedef enum {
  *
  * Returns: 0 on success, errno otherwise
  */
-int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j);
+int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
+		ai_merge_progress_callback_t progress_callback);
 /**
  * ai_merge_backup_old
  * @dest: path to the destination tree

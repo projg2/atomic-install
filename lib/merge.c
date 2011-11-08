@@ -31,9 +31,12 @@
  *
  * Returns: 0 on success, errno on failure
  */
-static int ai_mkdir_cp(char *source, char *dest, const char *path) {
+static int ai_mkdir_cp(char *source, char *dest, const char *path,
+		ai_merge_progress_callback_t progress_callback) {
 	char *sp = strrchr(source, '/') - strlen(path) + 1;
 	char *dp = strrchr(dest, '/') - strlen(path) + 1;
+
+	const char *relpath = sp;
 
 	while (sp) {
 		int ret;
@@ -41,6 +44,8 @@ static int ai_mkdir_cp(char *source, char *dest, const char *path) {
 		*sp = 0;
 		*dp = 0;
 
+		if (progress_callback && *relpath)
+			progress_callback(relpath, 0, 0);
 		/* Try to copy the directory entry */
 		ret = ai_cp_a(source, dest);
 
@@ -71,7 +76,8 @@ static int ai_merge_constraint_flags(ai_journal_t j, uint32_t required, uint32_t
 	return (ai_journal_get_flags(j) & (required|unallowed)) == required;
 }
 
-int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
+int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
+		ai_merge_progress_callback_t progress_callback) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
 	/* maxpathlen covers path + filename, + 1 for null terminator */
@@ -81,6 +87,7 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 
 	char *oldpathbuf, *newpathbuf;
 	ai_journal_file_t *pp;
+	const char *relpath;
 
 	int ret = 0;
 
@@ -97,6 +104,8 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 		return errno;
 	}
 
+	relpath = oldpathbuf + strlen(source);
+
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
@@ -104,10 +113,12 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j) {
 		sprintf(oldpathbuf, "%s%s%s", source, path, name);
 		sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
 
+		if (progress_callback)
+			progress_callback(relpath, 0, 0);
 		ret = ai_cp_l(oldpathbuf, newpathbuf);
 
 		if (ret == ENOENT) {
-			ret = ai_mkdir_cp(oldpathbuf, newpathbuf, path);
+			ret = ai_mkdir_cp(oldpathbuf, newpathbuf, path, progress_callback);
 			if (!ret)
 				ret = ai_cp_l(oldpathbuf, newpathbuf);
 		}

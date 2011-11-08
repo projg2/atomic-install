@@ -27,6 +27,7 @@ static const struct option opts[] = {
 	{ "onestep", no_argument, NULL, '1' },
 	{ "resume", no_argument, NULL, 'r' },
 	{ "rollback", no_argument, NULL, 'R' },
+	{ "verbose", no_argument, NULL, 'v' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -41,7 +42,13 @@ static void print_help(const char *argv0) {
 "    --onestep, -1       perform a smallest step possible\n"
 "    --resume, -r        resume existing merge, do not try creating new one\n"
 "    --rollback, -R      roll existing merge back\n"
+"    --verbose, -v       report progress verbosely\n"
 "", argv0);
+}
+
+static void print_progress(const char *path, unsigned long int megs, unsigned long int size) {
+	if (megs == 0)
+		printf(">>> %s\n", path);
 }
 
 int main(int argc, char *argv[]) {
@@ -54,8 +61,9 @@ int main(int argc, char *argv[]) {
 	int resume = 0;
 	int rollback = 0;
 	int noreplace = 0;
+	int verbose = 0;
 
-	while ((opt = getopt_long(argc, argv, "hV1nrR", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV1nrRv", opts, NULL)) != -1) {
 		switch (opt) {
 			case '1':
 				onestep = 1;
@@ -68,6 +76,9 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'R':
 				rollback = 1;
+				break;
+			case 'v':
+				verbose = 1;
 				break;
 			case 'V':
 				printf("%s\n", PACKAGE_STRING);
@@ -174,7 +185,7 @@ int main(int argc, char *argv[]) {
 			}
 		} else {
 			printf("* Copying new files...\n");
-			ret = ai_merge_copy_new(source, dest, j);
+			ret = ai_merge_copy_new(source, dest, j, verbose ? print_progress : NULL);
 			if (ret) {
 				printf("Copying new failed: %s\n", strerror(ret));
 				break;
