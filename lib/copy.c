@@ -283,13 +283,26 @@ int ai_cp_a(const char *source, const char *dest) {
 		ret = ai_cp_symlink(source, dest, st.st_size);
 	else if (S_ISREG(st.st_mode))
 		ret = ai_cp_reg(source, dest, st.st_size);
-	else if (S_ISDIR(st.st_mode)) {
-		if (mkdir(dest, st.st_mode & ~S_IFMT))
-			ret = errno;
+	else {
+		if (S_ISDIR(st.st_mode))
+			ret = mkdir(dest, st.st_mode & ~S_IFMT);
+		else if (S_ISFIFO(st.st_mode))
+			ret = mkfifo(dest, st.st_mode & ~S_IFMT);
+		else if (0
+#ifdef S_ISCHR
+				|| S_ISCHR(st.st_mode)
+#endif
+#ifdef S_ISBLK
+				|| S_ISBLK(st.st_mode)
+#endif
+				)
+			ret = mknod(dest, st.st_mode, st.st_rdev);
 		else
-			ret = 0;
-	} else
-		return EINVAL;
+			return EINVAL;
+
+		if (ret)
+			ret = errno;
+	}
 
 	if (!ret) {
 		ret = ai_cp_stat(dest, st);
