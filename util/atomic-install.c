@@ -21,6 +21,8 @@
 
 static const struct option opts[] = {
 	{ "help", no_argument, NULL, 'h' },
+	{ "version", no_argument, NULL, 'V' },
+
 	{ "onestep", no_argument, NULL, '1' },
 	{ "resume", no_argument, NULL, 'r' },
 	{ "rollback", no_argument, NULL, 'R' },
@@ -32,6 +34,8 @@ static void print_help(const char *argv0) {
 "\n"
 "Options:\n"
 "    --help, -h          this help message\n"
+"    --version, -V       print program version\n"
+"\n"
 "    --onestep, -1       perform a smallest step possible\n"
 "    --resume, -r        resume existing merge, do not try creating new one\n"
 "    --rollback, -R      roll existing merge back\n"
@@ -48,7 +52,7 @@ int main(int argc, char *argv[]) {
 	int resume = 0;
 	int rollback = 0;
 
-	while ((opt = getopt_long(argc, argv, "h1rR", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV1rR", opts, NULL)) != -1) {
 		switch (opt) {
 			case '1':
 				onestep = 1;
@@ -59,6 +63,9 @@ int main(int argc, char *argv[]) {
 			case 'R':
 				rollback = 1;
 				break;
+			case 'V':
+				printf("%s\n", PACKAGE_STRING);
+				return 0;
 			case 0:
 				break;
 			default:
