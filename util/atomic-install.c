@@ -23,6 +23,7 @@ static const struct option opts[] = {
 	{ "help", no_argument, NULL, 'h' },
 	{ "version", no_argument, NULL, 'V' },
 
+	{ "no-replace", no_argument, NULL, 'n' },
 	{ "onestep", no_argument, NULL, '1' },
 	{ "resume", no_argument, NULL, 'r' },
 	{ "rollback", no_argument, NULL, 'R' },
@@ -36,6 +37,7 @@ static void print_help(const char *argv0) {
 "    --help, -h          this help message\n"
 "    --version, -V       print program version\n"
 "\n"
+"    --no-replace, -n    terminate before the replacement step\n"
 "    --onestep, -1       perform a smallest step possible\n"
 "    --resume, -r        resume existing merge, do not try creating new one\n"
 "    --rollback, -R      roll existing merge back\n"
@@ -51,11 +53,15 @@ int main(int argc, char *argv[]) {
 	int onestep = 0;
 	int resume = 0;
 	int rollback = 0;
+	int noreplace = 0;
 
-	while ((opt = getopt_long(argc, argv, "hV1rR", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV1nrR", opts, NULL)) != -1) {
 		switch (opt) {
 			case '1':
 				onestep = 1;
+				break;
+			case 'n':
+				noreplace = 1;
 				break;
 			case 'r':
 				resume = 1;
@@ -151,6 +157,8 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		} else if (flags & AI_MERGE_BACKED_OLD_UP && flags & AI_MERGE_COPIED_NEW) {
+			if (noreplace)
+				break;
 			printf("* Replacing files...\n");
 			ret = ai_merge_replace(dest, j);
 			if (ret) {
