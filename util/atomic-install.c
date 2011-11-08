@@ -13,30 +13,65 @@
 #	include <stdint.h>
 #endif
 
+#include <unistd.h>
+#include <getopt.h>
+
 #include "lib/journal.h"
 #include "lib/merge.h"
 
 int main(int argc, char *argv[]) {
 	ai_journal_t j;
+	int opt;
 	int ret, ret2;
 
 	const char *journal_file, *source, *dest;
+	int onestep = 0;
+	int resume = 0;
+	int rollback = 0;
 
-	if (argc < 4) {
+	const struct option opts[] = {
+		{ "help", no_argument, NULL, 'h' },
+		{ "onestep", no_argument, NULL, '1' },
+		{ "resume", no_argument, NULL, 'r' },
+		{ "rollback", no_argument, NULL, 'R' },
+		{ 0, 0, 0, 0 }
+	};
+
+	while ((opt = getopt_long(argc, argv, "h1rR", opts, NULL)) != -1) {
+		switch (opt) {
+			case '1':
+				onestep = 1;
+				break;
+			case 'r':
+				resume = 1;
+				break;
+			case 'R':
+				rollback = 1;
+				break;
+			case 0:
+				break;
+			default:
+				printf("XXX help\n");
+				return 0;
+		}
+	}
+
+	if (argc - optind < 3) {
 		printf("Synopsis: atomic-install journal source dest\n");
 		return 0;
 	}
 
-	journal_file = argv[1];
-	source = argv[2];
-	dest = argv[3];
+	journal_file = argv[optind];
+	source = argv[optind + 1];
+	dest = argv[optind + 2];
 
 	/* Try to open.
 	 * If it doesn't exist, try to create and then open. */
 	ret = ai_journal_open(journal_file, &j);
 	if (!ret)
-		printf("* Journal file open, resuming.\n");
-	else if (ret == ENOENT) {
+		printf("* Journal file open, %s.\n",
+				rollback ? "rolling back" : "resuming");
+	else if (ret == ENOENT && !resume && !rollback) {
 		printf("* Journal not found, creating...\n");
 
 		ret = ai_journal_create(journal_file, source);
@@ -55,9 +90,13 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		const uint32_t flags = ai_journal_get_flags(j);
 
-		if (flags & AI_MERGE_ROLLBACK_STARTED) {
+		if (flags & AI_MERGE_ROLLBACK_STARTED || rollback) {
 			/* Proceed with rollback. */
-			if (flags & AI_MERGE_BACKED_OLD_UP) {
+			if (flags & AI_MERGE_REPLACED) {
+				printf("! Replacement complete, rollback impossible.\n");
+				ret = 1;
+				break;
+			} else if (flags & AI_MERGE_BACKED_OLD_UP) {
 				printf("* Rolling back replacement...\n");
 				ret = ai_merge_rollback_replace(dest, j);
 				if (ret) {
@@ -115,6 +154,9 @@ int main(int argc, char *argv[]) {
 				break;
 			}
 		}
+
+		if (onestep)
+			break;
 	}
 
 	ret2 = ai_journal_close(j);
