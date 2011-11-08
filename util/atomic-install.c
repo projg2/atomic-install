@@ -19,6 +19,25 @@
 #include "lib/journal.h"
 #include "lib/merge.h"
 
+static const struct option opts[] = {
+	{ "help", no_argument, NULL, 'h' },
+	{ "onestep", no_argument, NULL, '1' },
+	{ "resume", no_argument, NULL, 'r' },
+	{ "rollback", no_argument, NULL, 'R' },
+	{ 0, 0, 0, 0 }
+};
+
+static void print_help(const char *argv0) {
+	printf("Usage: %s [options] journal-file source dest\n"
+"\n"
+"Options:\n"
+"    --help, -h          this help message\n"
+"    --onestep, -1       perform a smallest step possible\n"
+"    --resume, -r        resume existing merge, do not try creating new one\n"
+"    --rollback, -R      roll existing merge back\n"
+"", argv0);
+}
+
 int main(int argc, char *argv[]) {
 	ai_journal_t j;
 	int opt;
@@ -28,14 +47,6 @@ int main(int argc, char *argv[]) {
 	int onestep = 0;
 	int resume = 0;
 	int rollback = 0;
-
-	const struct option opts[] = {
-		{ "help", no_argument, NULL, 'h' },
-		{ "onestep", no_argument, NULL, '1' },
-		{ "resume", no_argument, NULL, 'r' },
-		{ "rollback", no_argument, NULL, 'R' },
-		{ 0, 0, 0, 0 }
-	};
 
 	while ((opt = getopt_long(argc, argv, "h1rR", opts, NULL)) != -1) {
 		switch (opt) {
@@ -51,7 +62,7 @@ int main(int argc, char *argv[]) {
 			case 0:
 				break;
 			default:
-				printf("XXX help\n");
+				print_help(argv[0]);
 				return 0;
 		}
 	}
