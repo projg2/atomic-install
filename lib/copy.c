@@ -284,7 +284,7 @@ int ai_cp_a(const char *source, const char *dest) {
 	else if (S_ISREG(st.st_mode))
 		ret = ai_cp_reg(source, dest, st.st_size);
 	else if (S_ISDIR(st.st_mode)) {
-		if (mkdir(dest, 0755))
+		if (mkdir(dest, st.st_mode & ~S_IFMT))
 			ret = errno;
 		else
 			ret = 0;
