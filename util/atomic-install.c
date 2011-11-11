@@ -5,6 +5,7 @@
 
 #include "config.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -15,6 +16,7 @@
 
 #include <unistd.h>
 #include <getopt.h>
+#include <signal.h>
 
 #include "lib/journal.h"
 #include "lib/merge.h"
@@ -63,6 +65,8 @@ struct loop_data {
 	int verbose;
 	int onestep;
 };
+
+struct loop_data main_data;
 
 static int loop(struct loop_data *d) {
 	int ret;
@@ -145,30 +149,37 @@ static int loop(struct loop_data *d) {
 	return ret;
 }
 
+static void term_handler(int sig) {
+	main_data.rollback = 1;
+	main_data.onestep = 1;
+	loop(&main_data);
+	exit(1);
+}
+
 int main(int argc, char *argv[]) {
 	int opt;
 	int ret, ret2;
 
-	struct loop_data d;
+	struct sigaction sa;
 
 	int resume = 0;
 
 	while ((opt = getopt_long(argc, argv, "hV1nrRv", opts, NULL)) != -1) {
 		switch (opt) {
 			case '1':
-				d.onestep = 1;
+				main_data.onestep = 1;
 				break;
 			case 'n':
-				d.noreplace = 1;
+				main_data.noreplace = 1;
 				break;
 			case 'r':
 				resume = 1;
 				break;
 			case 'R':
-				d.rollback = 1;
+				main_data.rollback = 1;
 				break;
 			case 'v':
-				d.verbose = 1;
+				main_data.verbose = 1;
 				break;
 			case 'V':
 				printf("%s\n", PACKAGE_STRING);
@@ -186,35 +197,51 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	d.journal_file = argv[optind];
-	d.source = argv[optind + 1];
-	d.dest = argv[optind + 2];
+	main_data.journal_file = argv[optind];
+	main_data.source = argv[optind + 1];
+	main_data.dest = argv[optind + 2];
 
 	/* Try to open.
 	 * If it doesn't exist, try to create and then open. */
-	ret = ai_journal_open(d.journal_file, &d.j);
+	ret = ai_journal_open(main_data.journal_file, &main_data.j);
 	if (!ret)
 		printf("* Journal file open, %s.\n",
-				d.rollback ? "rolling back" : "resuming");
-	else if (ret == ENOENT && !resume && !d.rollback) {
+				main_data.rollback ? "rolling back" : "resuming");
+	else if (ret == ENOENT && !resume && !main_data.rollback) {
 		printf("* Journal not found, creating...\n");
 
-		ret = ai_journal_create(d.journal_file, d.source);
+		ret = ai_journal_create(main_data.journal_file, main_data.source);
 		if (ret) {
 			printf("Journal creation failed: %s\n", strerror(ret));
 			return ret;
 		}
 
-		ret = ai_journal_open(d.journal_file, &d.j);
+		ret = ai_journal_open(main_data.journal_file, &main_data.j);
 	}
 	if (ret) {
 		printf("Journal open failed: %s\n", strerror(ret));
 		return ret;
 	}
 
-	ret = loop(&d);
+	sa.sa_handler = SIG_IGN;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
 
-	ret2 = ai_journal_close(d.j);
+	sigaction(SIGUSR1, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
+
+	sa.sa_handler = &term_handler;
+	sigaddset(&sa.sa_mask, SIGINT);
+	sigaddset(&sa.sa_mask, SIGTERM);
+	sigaddset(&sa.sa_mask, SIGHUP);
+
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
+
+	ret = loop(&main_data);
+
+	ret2 = ai_journal_close(main_data.j);
 	if (ret2)
 		printf("Journal close failed: %s\n", strerror(ret));
 
