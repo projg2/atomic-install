@@ -148,9 +148,6 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 
 	int ret = 0;
 
-	if (!ai_merge_constraint_flags(j, AI_MERGE_COPIED_NEW, 0))
-		return EINVAL;
-
 	/* Mark rollback as started. */
 	ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
 	if (ret)
@@ -244,7 +241,7 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 	int ret = 0;
 
 	/* replace could be started already; we need to rollback that instead */
-	if (!ai_merge_constraint_flags(j, AI_MERGE_BACKED_OLD_UP, AI_MERGE_COPIED_NEW))
+	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_BACKED_OLD_UP))
 		return EINVAL;
 
 	/* Mark rollback as started. */
