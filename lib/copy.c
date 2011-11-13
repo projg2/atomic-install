@@ -165,7 +165,8 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 	}
 
 #ifdef HAVE_POSIX_FALLOCATE
-	ret = posix_fallocate(fd_out, 0, expsize);
+	if (expsize != 0)
+		ret = posix_fallocate(fd_out, 0, expsize);
 #endif
 
 #ifdef HAVE_POSIX_FADVISE
