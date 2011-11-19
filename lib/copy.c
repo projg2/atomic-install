@@ -227,7 +227,7 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 	}
 
 #ifdef HAVE_FCHMODAT
-	if (!fchmodat(AT_FDCWD, dest, st.st_mode, AT_SYMLINK_NOFOLLOW))
+	if (!fchmodat(AT_FDCWD, dest, st.st_mode, AT_SYMLINK_NOFOLLOW));
 		/* fchmodat() may or may not support touching symlinks,
 		 * if it doesn't, fall back to chmod() */
 	else if (errno != EINVAL
