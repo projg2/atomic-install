@@ -201,7 +201,7 @@ static void ai_journal_set_filename_prefix(char *out, long int bits) {
 }
 
 int ai_journal_create(const char *journal_path, const char *location) {
-	struct ai_journal newj = { AI_JOURNAL_MAGIC, 0x0000, 0, 0 };
+	struct ai_journal newj = { AI_JOURNAL_MAGIC, 0x0000, 0 };
 
 	FILE *f;
 	int ret;
