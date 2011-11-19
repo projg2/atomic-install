@@ -323,7 +323,7 @@ int ai_journal_file_set_flag(ai_journal_file_t *f, unsigned char new_flag) {
 }
 
 const char *ai_journal_file_path(ai_journal_file_t *f) {
-	return f + 1;
+	return (const char*) f + 1;
 }
 
 const char *ai_journal_file_name(ai_journal_file_t *f) {
@@ -334,7 +334,7 @@ const char *ai_journal_file_name(ai_journal_file_t *f) {
 
 ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f) {
 	const char *fn = ai_journal_file_name(f);
-	unsigned char *next = (char*) fn + strlen(fn) + 1;
+	unsigned char *next = (unsigned char*) fn + strlen(fn) + 1;
 
 	return *next != AI_JOURNAL_EOF ? next : NULL;
 }

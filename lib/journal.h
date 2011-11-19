@@ -28,7 +28,7 @@ typedef struct ai_journal *ai_journal_t;
  *
  * The type describing a single file in the journal. Used via a pointer.
  */
-typedef char ai_journal_file_t;
+typedef unsigned char ai_journal_file_t;
 
 /**
  * ai_journal_create
