@@ -159,6 +159,8 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 					|| fputc(0, outf) == EOF /* sep */
 					|| fwrite(fnpart, len - pathlen, 1, outf) != 1) /* fn */
 				ret = errno;
+			else
+				ret = 0;
 			*filelen += len + 2;
 
 			if (*maxpathlen < len)

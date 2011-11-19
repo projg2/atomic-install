@@ -69,7 +69,7 @@ struct loop_data {
 struct loop_data main_data;
 
 static int loop(struct loop_data *d) {
-	int ret;
+	int ret = 0;
 
 	while (1) {
 		const uint32_t flags = ai_journal_get_flags(d->j);
