@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 
 #ifdef HAVE_STDINT_H
 #	include <stdint.h>
@@ -233,7 +234,6 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 	/* maxpathlen covers path + filename, + 1 for null terminator
 	 * + .<fn-prefix>~ + .old */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
-	const uint32_t flags = ai_journal_get_flags(j);
 
 	char *newpathbuf;
 	ai_journal_file_t *pp;
@@ -274,7 +274,6 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 
 int ai_merge_replace(const char *dest, ai_journal_t j) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
-	const uint32_t j_flags = ai_journal_get_flags(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
 	/* maxpathlen covers path + filename, + 1 for null terminator */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 1;
@@ -325,7 +324,6 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 
 int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
-	const uint32_t j_flags = ai_journal_get_flags(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
 	/* maxpathlen covers path + filename, + 1 for null terminator */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 1;

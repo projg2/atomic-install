@@ -7,6 +7,7 @@
 #include "copy.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <errno.h>
 
 #include <sys/types.h>
@@ -199,8 +200,6 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
  * Returns: 0 on success, errno on failure
  */
 static int ai_cp_stat(const char *dest, struct stat st) {
-	int ret;
-
 	if (lchown(dest, st.st_uid, st.st_gid))
 		return errno;
 
@@ -228,11 +227,9 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 	}
 
 #ifdef HAVE_FCHMODAT
-	ret = fchmodat(AT_FDCWD, dest, st.st_mode, AT_SYMLINK_NOFOLLOW);
-
-	if (!ret);
-	/* fchmodat() may or may not support touching symlinks,
-	 * if it doesn't, fall back to chmod() */
+	if (!fchmodat(AT_FDCWD, dest, st.st_mode, AT_SYMLINK_NOFOLLOW))
+		/* fchmodat() may or may not support touching symlinks,
+		 * if it doesn't, fall back to chmod() */
 	else if (errno != EINVAL
 #ifdef EOPNOTSUPP /* POSIX-2008 */
 			&& errno != EOPNOTSUPP
@@ -251,12 +248,6 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 
 	return 0;
 }
-
-#ifdef HAVE_LIBATTR
-static int attr_allow_all(const char *name, struct error_context *err) {
-	return 1;
-}
-#endif
 
 /**
  * ai_cp_attr
