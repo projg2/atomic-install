@@ -19,6 +19,8 @@
 #include <dirent.h>
 #include <time.h>
 
+#include <assert.h>
+
 #ifdef HAVE_FLOCK
 #	include <sys/file.h>
 #endif
@@ -51,6 +53,7 @@ static const unsigned char AI_JOURNAL_EOF = 0xff;
  * @prefix: random prefix for temporary files associated with journal
  * @length: exact journal file length, in bytes
  * @maxpathlen: max length of path+filename in journal
+ * @reserved.fd: used internally, must be -1 on closed journal file
  * @files: array of (flag + path + \0 + filename + \0), terminated
  *	by %AI_JOURNAL_EOF (on flag field)
  *
@@ -65,6 +68,11 @@ struct ai_journal {
 
 	uint64_t length;
 	uint64_t maxpathlen;
+
+	union {
+		FILE *f;
+		uint64_t fill;
+	} reserved;
 
 	unsigned char files[];
 };
@@ -226,6 +234,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 
 	newj.length = sizeof(newj) + 1;
 	newj.maxpathlen = 0;
+	newj.reserved.f = NULL;
 
 	srandom(time(NULL));
 	ai_journal_set_filename_prefix(newj.prefix, random());
@@ -289,7 +298,8 @@ int ai_journal_open(const char *journal_path, ai_journal_t *ret) {
 
 		if (memcmp((*ret)->magic, AI_JOURNAL_MAGIC, sizeof(AI_JOURNAL_MAGIC))
 				|| (*ret)->version != 0
-				|| (*ret)->length != st.st_size) {
+				|| (*ret)->length != st.st_size
+				|| (*ret)->reserved.f) {
 
 			munmap(ret, st.st_size);
 			retval = EINVAL;
@@ -301,6 +311,8 @@ int ai_journal_open(const char *journal_path, ai_journal_t *ret) {
 }
 
 int ai_journal_close(ai_journal_t j) {
+	assert(j->reserved.f);
+
 	if (munmap(j, j->length))
 		return errno;
 
@@ -308,14 +320,20 @@ int ai_journal_close(ai_journal_t j) {
 }
 
 ai_journal_file_t *ai_journal_get_files(ai_journal_t j) {
+	assert(j->reserved.f);
+
 	return *(j->files) != AI_JOURNAL_EOF ? j->files : NULL;
 }
 
 int ai_journal_get_maxpathlen(ai_journal_t j) {
+	assert(j->reserved.f);
+
 	return j->maxpathlen;
 }
 
 const char *ai_journal_get_filename_prefix(ai_journal_t j) {
+	assert(j->reserved.f);
+
 	return j->prefix;
 }
 
@@ -347,10 +365,14 @@ ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f) {
 }
 
 unsigned long int ai_journal_get_flags(ai_journal_t j) {
+	assert(j->reserved.f);
+
 	return j->flags;
 }
 
 int ai_journal_set_flag(ai_journal_t j, unsigned long int new_flag) {
+	assert(j->reserved.f);
+
 #ifdef HAVE_SYNC
 	sync();
 #endif
