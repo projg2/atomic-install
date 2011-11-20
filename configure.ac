@@ -12,7 +12,7 @@ AC_USE_SYSTEM_EXTENSIONS
 LT_INIT([disable-static])
 GTK_DOC_CHECK([1.15])
 
-AC_CHECK_FUNCS([fchmodat lockf posix_fallocate posix_fadvise sync utimensat])
+AC_CHECK_FUNCS([fchmodat flock posix_fallocate posix_fadvise sync utimensat])
 
 AC_TYPE_OFF_T
 AC_TYPE_SSIZE_T

@@ -19,6 +19,10 @@
 #include <dirent.h>
 #include <time.h>
 
+#ifdef HAVE_FLOCK
+#	include <sys/file.h>
+#endif
+
 #ifdef HAVE_STDINT_H
 #	include <stdint.h>
 #endif
@@ -207,7 +211,7 @@ int ai_journal_create(const char *journal_path, const char *location) {
 
 	FILE *f;
 	int ret;
-#ifdef HAVE_LOCKF
+#ifdef HAVE_FLOCK
 	int fd;
 #endif
 	uint64_t len = sizeof(newj) + 1;
@@ -217,9 +221,9 @@ int ai_journal_create(const char *journal_path, const char *location) {
 	if (!f)
 		return errno;
 
-#ifdef HAVE_LOCKF
+#ifdef HAVE_FLOCK
 	fd = fileno(f);
-	lockf(fd, F_LOCK, 0);
+	flock(fd, LOCK_EX);
 #endif
 
 	srandom(time(NULL));
@@ -246,8 +250,8 @@ int ai_journal_create(const char *journal_path, const char *location) {
 		}
 	}
 
-#ifdef HAVE_LOCKF
-	lockf(fd, F_ULOCK, 0);
+#ifdef HAVE_FLOCK
+	flock(fd, LOCK_UN);
 #endif
 	if (fclose(f) && !ret)
 		ret = errno;
@@ -264,8 +268,8 @@ int ai_journal_open(const char *journal_path, ai_journal_t *ret) {
 	if (fd == -1)
 		return errno;
 
-#ifdef HAVE_LOCKF
-	lockf(fd, F_LOCK, 0);
+#ifdef HAVE_FLOCK
+	flock(fd, LOCK_EX);
 #endif
 	do {
 		if (fstat(fd, &st)) {
