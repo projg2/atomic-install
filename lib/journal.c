@@ -214,8 +214,6 @@ int ai_journal_create(const char *journal_path, const char *location) {
 #ifdef HAVE_FLOCK
 	int fd;
 #endif
-	uint64_t len = sizeof(newj) + 1;
-	uint64_t maxpathlen = 0;
 
 	f = fopen(journal_path, "wb");
 	if (!f)
@@ -226,6 +224,9 @@ int ai_journal_create(const char *journal_path, const char *location) {
 	flock(fd, LOCK_EX);
 #endif
 
+	newj.length = sizeof(newj) + 1;
+	newj.maxpathlen = 0;
+
 	srandom(time(NULL));
 	ai_journal_set_filename_prefix(newj.prefix, random());
 
@@ -234,16 +235,14 @@ int ai_journal_create(const char *journal_path, const char *location) {
 		return errno;
 	}
 
-	ret = ai_traverse_tree(location, "", f, 1, &len, &maxpathlen);
+	ret = ai_traverse_tree(location, "", f, 1,
+			&newj.length, &newj.maxpathlen);
 
 	if (!ret) {
 		/* Terminate the list. */
 		if (fputc(AI_JOURNAL_EOF, f) == EOF)
 			ret = errno;
 		else {
-			newj.length = len;
-			newj.maxpathlen = maxpathlen - 1;
-
 			rewind(f);
 			if (fwrite(&newj, sizeof(newj), 1, f) < 1)
 				ret = errno;
