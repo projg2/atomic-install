@@ -264,7 +264,9 @@ int ai_journal_open(const char *journal_path, ai_journal_t *ret) {
 	if (fd == -1)
 		return errno;
 
+#ifdef HAVE_LOCKF
 	lockf(fd, F_LOCK, 0);
+#endif
 	do {
 		if (fstat(fd, &st)) {
 			retval = errno;
