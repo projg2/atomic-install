@@ -214,55 +214,86 @@ static void ai_journal_set_filename_prefix(char *out, long int bits) {
 	out[i] = 0;
 }
 
-int ai_journal_create(const char *journal_path, const char *location) {
-	struct ai_journal newj = { AI_JOURNAL_MAGIC, 0x0000, 0 };
-
+int ai_journal_create_start(const char *journal_path, const char *location,
+		ai_journal_t *ret) {
+	struct ai_journal *newj;
 	FILE *f;
-	int ret;
-#ifdef HAVE_FLOCK
-	int fd;
-#endif
+
+	int retval;
+
+	newj = malloc(sizeof(*newj));
+	if (!newj)
+		return errno;
 
 	f = fopen(journal_path, "wb");
-	if (!f)
+	if (!f) {
+		free(newj);
 		return errno;
+	}
 
-#ifdef HAVE_FLOCK
-	fd = fileno(f);
-	flock(fd, LOCK_EX);
-#endif
-
-	newj.length = sizeof(newj) + 1;
-	newj.maxpathlen = 0;
-	newj.reserved.f = NULL;
+	memcpy(newj->magic, AI_JOURNAL_MAGIC, sizeof(newj->magic));
+	newj->version = 0x0000;
+	newj->flags = 0;
+	newj->length = sizeof(*newj) + 1;
+	newj->maxpathlen = 0;
 
 	srandom(time(NULL));
-	ai_journal_set_filename_prefix(newj.prefix, random());
+	ai_journal_set_filename_prefix(newj->prefix, random());
 
-	if (fwrite(&newj, sizeof(newj), 1, f) < 1) {
+	newj->reserved.f = f;
+
+#ifdef HAVE_FLOCK
+	flock(fileno(f), LOCK_EX);
+#endif
+
+	if (fwrite(newj, sizeof(*newj), 1, f) < 1) {
 		fclose(f);
+		free(newj);
 		return errno;
 	}
 
-	ret = ai_traverse_tree(location, "", f, 1,
-			&newj.length, &newj.maxpathlen);
+	retval = ai_traverse_tree(location, "", f, 1,
+			&newj->length, &newj->maxpathlen);
 
-	if (!ret) {
-		/* Terminate the list. */
-		if (fputc(AI_JOURNAL_EOF, f) == EOF)
-			ret = errno;
-		else {
-			rewind(f);
-			if (fwrite(&newj, sizeof(newj), 1, f) < 1)
-				ret = errno;
-		}
+	if (!retval)
+		*ret = newj;
+	else {
+		fclose(f);
+		free(newj);
 	}
 
-#ifdef HAVE_FLOCK
-	flock(fd, LOCK_UN);
-#endif
+	return retval;
+}
+
+int ai_journal_create_finish(ai_journal_t j) {
+	int ret = 0;
+
+	FILE *f = j->reserved.f;
+	assert(f);
+
+	/* Terminate the list. */
+	if (fputc(AI_JOURNAL_EOF, f) == EOF)
+		ret = errno;
+	else {
+		rewind(f);
+		j->reserved.f = NULL;
+		if (fwrite(j, sizeof(*j), 1, f) < 1)
+			ret = errno;
+	}
+
 	if (fclose(f) && !ret)
 		ret = errno;
+
+	return ret;
+}
+
+int ai_journal_create(const char *journal_path, const char *location) {
+	int ret;
+	ai_journal_t j;
+
+	ret = ai_journal_create_start(journal_path, location, &j);
+	if (!ret)
+		ret = ai_journal_create_finish(j);
 
 	return ret;
 }
@@ -311,7 +342,7 @@ int ai_journal_open(const char *journal_path, ai_journal_t *ret) {
 }
 
 int ai_journal_close(ai_journal_t j) {
-	assert(j->reserved.f);
+	assert(!j->reserved.f);
 
 	if (munmap(j, j->length))
 		return errno;
@@ -320,19 +351,19 @@ int ai_journal_close(ai_journal_t j) {
 }
 
 ai_journal_file_t *ai_journal_get_files(ai_journal_t j) {
-	assert(j->reserved.f);
+	assert(!j->reserved.f);
 
 	return *(j->files) != AI_JOURNAL_EOF ? j->files : NULL;
 }
 
 int ai_journal_get_maxpathlen(ai_journal_t j) {
-	assert(j->reserved.f);
+	assert(!j->reserved.f);
 
 	return j->maxpathlen;
 }
 
 const char *ai_journal_get_filename_prefix(ai_journal_t j) {
-	assert(j->reserved.f);
+	assert(!j->reserved.f);
 
 	return j->prefix;
 }
@@ -365,13 +396,13 @@ ai_journal_file_t *ai_journal_file_next(ai_journal_file_t *f) {
 }
 
 unsigned long int ai_journal_get_flags(ai_journal_t j) {
-	assert(j->reserved.f);
+	assert(!j->reserved.f);
 
 	return j->flags;
 }
 
 int ai_journal_set_flag(ai_journal_t j, unsigned long int new_flag) {
-	assert(j->reserved.f);
+	assert(!j->reserved.f);
 
 #ifdef HAVE_SYNC
 	sync();

@@ -42,6 +42,34 @@ typedef unsigned char ai_journal_file_t;
  * Returns: 0 on success, errno otherwise
  */
 int ai_journal_create(const char *journal_path, const char *location);
+/**
+ * ai_journal_create_start
+ * @journal_path: path for the new journal file
+ * @location: source tree location
+ * @ret: location to write new ai_journal_t to
+ *
+ * Start creating a journal file. Fill the new journal with files from @location
+ * but keep it open for appending.
+ *
+ * When successful, this function writes ai_journal_t for the new journal into
+ * @ret. This journal needs to be finished using ai_journal_create_finish(); it
+ * can't be used with other functions.
+ *
+ * Returns: 0 on success, errno otherwise
+ */
+int ai_journal_create_start(const char *journal_path, const char *location,
+		ai_journal_t *ret);
+/**
+ * ai_journal_create_finish
+ * @j: journal returned by ai_journal_create_start()
+ *
+ * Finish creating the new journal. Update the header and close the file.
+ *
+ * After a call to this function, @j becomes no longer invalid.
+ *
+ * Returns: 0 on success, errno otherwise
+ */
+int ai_journal_create_finish(ai_journal_t j);
 
 /**
  * ai_journal_open
