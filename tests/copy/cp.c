@@ -31,11 +31,12 @@
 enum test_codes {
 	T_REGULAR = 'r',
 	T_EMPTY = 'e',
-	T_SYMLINK = 's'
+	T_SYMLINK = 's',
+	T_BROKEN_SYMLINK = 'i'
 };
 
 int randumness[0x2000];
-const char ex_linkdest[] = ADDITIONAL_TMPFILE;
+char ex_linkdest[] = ADDITIONAL_TMPFILE;
 
 static int create_input(const char *path, int fill) {
 	FILE *f = fopen(path, "wb");
@@ -188,6 +189,8 @@ int main(int argc, char *argv[]) {
 				return 2;
 			}
 			break;
+		case T_BROKEN_SYMLINK:
+			ex_linkdest[0]++;
 		case T_SYMLINK:
 			if (symlink(ex_linkdest, INPUT_FILE)) {
 				perror("Input symlink creation failed");
