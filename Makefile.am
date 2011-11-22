@@ -21,6 +21,22 @@ bin_PROGRAMS = util/atomic-install
 util_atomic_install_SOURCES = util/atomic-install.c
 util_atomic_install_LDADD = lib/libai-merge.la
 
+check_PROGRAMS = tests/copy/cp
+
+TESTS = reg empty
+.PHONY: $(TESTS)
+TESTS_ENVIRONMENT = tests/copy/cp
+
+TEST_INPUT_FILE = tests/copy/input.tmp
+TEST_OUTPUT_FILE = tests/copy/output.tmp
+
+tests_copy_cp_SOURCES = tests/copy/cp.c
+tests_copy_cp_CPPFLAGS = -I$(top_srcdir)/lib \
+	-DINPUT_FILE=\"$(TEST_INPUT_FILE)\" -DOUTPUT_FILE=\"$(TEST_OUTPUT_FILE)\"
+tests_copy_cp_LDADD = lib/libai-copy.la
+
+CLEANFILES = $(TEST_INPUT_FILE) $(TEST_OUTPUT_FILE)
+
 EXTRA_DIST = NEWS
 NEWS: configure.ac Makefile.am
 	git for-each-ref refs/tags --sort '-*committerdate' \
