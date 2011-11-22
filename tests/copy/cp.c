@@ -30,10 +30,12 @@
 
 enum test_codes {
 	T_REGULAR = 'r',
-	T_EMPTY = 'e'
+	T_EMPTY = 'e',
+	T_SYMLINK = 's'
 };
 
 int randumness[0x2000];
+const char ex_linkdest[] = ADDITIONAL_TMPFILE;
 
 static int create_input(const char *path, int fill) {
 	FILE *f = fopen(path, "wb");
@@ -110,6 +112,26 @@ static int compare_files(const char *inp, const char *out, const char *output_pr
 
 				fclose(f);
 			}
+		} else if (S_ISLNK(st_in.st_mode)) {
+			char buf[sizeof(ex_linkdest)];
+
+			switch (readlink(out, buf, sizeof(buf))) {
+				case -1:
+					perror("readlink(OUTPUT) failed");
+					ret = 2;
+					break;
+				case sizeof(buf) - 1:
+					if (memcmp(buf, ex_linkdest, sizeof(buf))) {
+						buf[sizeof(buf) - 1] = 0;
+						fprintf(stderr, "[%s] Symlink target differs: %s vs %s\n",
+								output_prefix, ex_linkdest, buf);
+						ret = 1;
+					}
+					break;
+				default:
+					fprintf(stderr, "[%s] Invalid length when getting symlink target\n",
+							output_prefix);
+			}
 		} else {
 			fprintf(stderr, "[%s] Unhandled non-empty file format\n",
 					output_prefix);
@@ -154,12 +176,22 @@ int main(int argc, char *argv[]) {
 	if (slash)
 		code = slash + 1;
 
+	/* XXX: replace tests */
+	unlink(INPUT_FILE);
+	unlink(OUTPUT_FILE);
+
 	switch (code[0]) {
 		case T_REGULAR:
 		case T_EMPTY:
 			if (!create_input(INPUT_FILE, code[0] == T_REGULAR)) {
 				perror("Input creation failed");
 				return 2;
+			}
+			break;
+		case T_SYMLINK:
+			if (symlink(ex_linkdest, INPUT_FILE)) {
+				perror("Input symlink creation failed");
+				return 77;
 			}
 			break;
 		default:

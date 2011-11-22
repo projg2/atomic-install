@@ -23,19 +23,25 @@ util_atomic_install_LDADD = lib/libai-merge.la
 
 check_PROGRAMS = tests/copy/cp
 
-TESTS = reg empty
+TESTS = reg empty symlink
 .PHONY: $(TESTS)
 TESTS_ENVIRONMENT = tests/copy/cp
 
 TEST_INPUT_FILE = tests/copy/input.tmp
 TEST_OUTPUT_FILE = tests/copy/output.tmp
+TEST_ADD_FILE = tests/copy/additional-tmpfile
 
 tests_copy_cp_SOURCES = tests/copy/cp.c
 tests_copy_cp_CPPFLAGS = -I$(top_srcdir)/lib \
-	-DINPUT_FILE=\"$(TEST_INPUT_FILE)\" -DOUTPUT_FILE=\"$(TEST_OUTPUT_FILE)\"
+	-DINPUT_FILE=\"$(TEST_INPUT_FILE)\" -DOUTPUT_FILE=\"$(TEST_OUTPUT_FILE)\" \
+	-DADDITIONAL_TMPFILE=\"additional-tmpfile\"
 tests_copy_cp_LDADD = lib/libai-copy.la
 
-CLEANFILES = $(TEST_INPUT_FILE) $(TEST_OUTPUT_FILE)
+symlink: $(TEST_ADD_FILE)
+$(TEST_ADD_FILE):
+	touch $@
+
+CLEANFILES = $(TEST_INPUT_FILE) $(TEST_OUTPUT_FILE) $(TEST_ADD_FILE)
 
 EXTRA_DIST = NEWS
 NEWS: configure.ac Makefile.am
