@@ -23,7 +23,7 @@ util_atomic_install_LDADD = lib/libai-merge.la
 
 check_PROGRAMS = tests/copy/cp
 
-TESTS = reg empty symlink inval-symlink
+TESTS = reg empty symlink inval-symlink pipe-named blk-dev chr-dev
 .PHONY: $(TESTS)
 TESTS_ENVIRONMENT = tests/copy/cp
 

@@ -32,7 +32,10 @@ enum test_codes {
 	T_REGULAR = 'r',
 	T_EMPTY = 'e',
 	T_SYMLINK = 's',
-	T_BROKEN_SYMLINK = 'i'
+	T_BROKEN_SYMLINK = 'i',
+	T_NAMED_PIPE = 'p',
+	T_BLK_DEV = 'b',
+	T_CHR_DEV = 'c'
 };
 
 int randumness[0x2000];
@@ -72,7 +75,6 @@ static void print_diff_x(const char *output_prefix, const char *msg,
 	fprintf(stderr, "[%s] %s (%" PRIxMAX " vs %" PRIxMAX ")\n",
 			output_prefix, msg, left, right);
 }
-
 
 static int compare_files(const char *inp, const char *out, const char *output_prefix) {
 	struct stat st_in, st_out;
@@ -140,6 +142,21 @@ static int compare_files(const char *inp, const char *out, const char *output_pr
 		}
 	}
 
+#ifdef S_ISCHR
+	if (S_ISCHR(st_in.st_mode) && st_in.st_rdev != st_out.st_rdev) {
+		print_diff_x(output_prefix, "Character device rdev differs",
+				st_in.st_rdev, st_out.st_rdev);
+		ret = 1;
+	}
+#endif
+#ifdef S_ISBLK
+	if (S_ISBLK(st_in.st_mode) && st_in.st_rdev != st_out.st_rdev) {
+		print_diff_x(output_prefix, "Block device rdev differs",
+				st_in.st_rdev, st_out.st_rdev);
+		ret = 1;
+	}
+#endif
+
 	if (st_in.st_mode != st_out.st_mode) {
 		print_diff_x(output_prefix, "Mode differs",
 				st_in.st_mode, st_out.st_mode);
@@ -196,6 +213,34 @@ int main(int argc, char *argv[]) {
 				perror("Input symlink creation failed");
 				return 77;
 			}
+			break;
+		case T_NAMED_PIPE:
+			if (mkfifo(INPUT_FILE, 0700)) {
+				perror("Named pipe creation failed");
+				return 77;
+			}
+			break;
+		case T_BLK_DEV:
+#ifdef S_IFBLK
+			if (mknod(INPUT_FILE, 0700 | S_IFBLK, 0xff00)) {
+				perror("Block device creation failed");
+				return 77;
+			}
+#else
+			fprintf(stderr, "Block devices not supported\n");
+			return 77;
+#endif
+			break;
+		case T_CHR_DEV:
+#ifdef S_IFCHR
+			if (mknod(INPUT_FILE, 0700 | S_IFCHR, 0x0103)) {
+				perror("Character device creation failed");
+				return 77;
+			}
+#else
+			fprintf(stderr, "Character devices not supported\n");
+			return 77;
+#endif
 			break;
 		default:
 			fprintf(stderr, "Invalid arg: [%s]\n", code);
