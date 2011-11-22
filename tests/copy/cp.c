@@ -13,6 +13,7 @@
 
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 #ifdef HAVE_STDINT_H
 #	include <stdint.h>
@@ -32,6 +33,8 @@ enum test_codes {
 	T_EMPTY = 'e'
 };
 
+int randumness[0x2000];
+
 static int create_input(const char *path, int fill) {
 	FILE *f = fopen(path, "wb");
 	int ret = 1;
@@ -39,7 +42,14 @@ static int create_input(const char *path, int fill) {
 	if (!f)
 		return 0;
 	if (fill) {
-		/* XXX */
+		int i;
+
+		srand(time(NULL));
+		for (i = 0; i < 0x2000; i++) {
+			randumness[i] = random();
+		}
+
+		ret = (fwrite(randumness, sizeof(randumness), 1, f) == 1);
 	}
 
 	fclose(f);
@@ -81,8 +91,30 @@ static int compare_files(const char *inp, const char *out, const char *output_pr
 	}
 
 	if (st_in.st_size > 0) {
-		/* XXX */
-		ret = 77;
+		if (S_ISREG(st_in.st_mode)) {
+			FILE *f = fopen(out, "rb");
+			char buf[sizeof(randumness)];
+
+			if (!f) {
+				perror("Unable to open output file for reading");
+				ret = 2;
+			} else {
+				if (fread(buf, sizeof(buf), 1, f) != 1) {
+					perror("Output file read failed");
+					ret = 2;
+				} else if (memcmp(buf, randumness, sizeof(buf))) {
+					fprintf(stderr, "[%s] File contents differ\n",
+							output_prefix);
+					ret = 1;
+				}
+
+				fclose(f);
+			}
+		} else {
+			fprintf(stderr, "[%s] Unhandled non-empty file format\n",
+					output_prefix);
+			ret = 77;
+		}
 	}
 
 	if (st_in.st_mode != st_out.st_mode) {
@@ -124,9 +156,8 @@ int main(int argc, char *argv[]) {
 
 	switch (code[0]) {
 		case T_REGULAR:
-			return 77;
 		case T_EMPTY:
-			if (!create_input(INPUT_FILE, 0)) {
+			if (!create_input(INPUT_FILE, code[0] == T_REGULAR)) {
 				perror("Input creation failed");
 				return 2;
 			}
