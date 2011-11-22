@@ -83,7 +83,7 @@ static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 	buf[symlen + 1] = 0;
 
 	unlink(dest);
-	if (symlink(source, dest))
+	if (symlink(buf, dest))
 		return errno;
 	return 0;
 }
