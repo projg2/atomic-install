@@ -37,7 +37,8 @@ int ai_mv(const char *source, const char *dest) {
 
 int ai_cp_l(const char *source, const char *dest) {
 	/* link() will not overwrite */
-	unlink(dest);
+	if (unlink(dest) && errno != ENOENT)
+		return errno;
 
 	if (!link(source, dest))
 		return 0;
@@ -82,7 +83,6 @@ static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 	/* null terminate */
 	buf[symlen + 1] = 0;
 
-	unlink(dest);
 	if (symlink(buf, dest))
 		return errno;
 	return 0;
@@ -150,11 +150,6 @@ static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
 
 	fd_in = open(source, O_RDONLY);
 	if (fd_in == -1)
-		return errno;
-
-	/* ensure to remove destination file before proceeding;
-	 * otherwise, we could rewrite hardlinked file */
-	if (unlink(dest) && errno != ENOENT)
 		return errno;
 
 	/* don't care about perms, will have to chmod anyway */
@@ -268,6 +263,11 @@ int ai_cp_a(const char *source, const char *dest) {
 
 	/* First lstat() it, see what we got. */
 	if (lstat(source, &st))
+		return errno;
+
+	/* ensure to remove destination file before proceeding;
+	 * otherwise, we could rewrite hardlinked file */
+	if (unlink(dest) && errno != ENOENT)
 		return errno;
 
 	/* Is it a symlink? */
