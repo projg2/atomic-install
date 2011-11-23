@@ -34,7 +34,8 @@ enum test_codes {
 	T_BROKEN_SYMLINK = 'i',
 	T_NAMED_PIPE = 'p',
 	T_BLK_DEV = 'b',
-	T_CHR_DEV = 'c'
+	T_CHR_DEV = 'c',
+	T_REPLACE_SAME = '_'
 };
 
 int randumness[0x2000] = {0x777};
@@ -185,57 +186,68 @@ int main(int argc, char *argv[]) {
 	if (slash)
 		code = slash + 1;
 
-	/* XXX: replace tests */
-	unlink(INPUT_FILE);
-	unlink(OUTPUT_FILE);
+	if (code[0] == '_') {
+		struct stat st;
+		if (lstat(INPUT_FILE, &st))
+			return 77;
 
-	switch (code[0]) {
-		case T_REGULAR:
-		case T_EMPTY:
-			if (!create_input(INPUT_FILE, code[0] == T_REGULAR)) {
-				perror("Input creation failed");
-				return 2;
-			}
-			break;
-		case T_BROKEN_SYMLINK:
-			ex_linkdest[0]++;
-		case T_SYMLINK:
-			if (symlink(ex_linkdest, INPUT_FILE)) {
-				perror("Input symlink creation failed");
-				return 77;
-			}
-			break;
-		case T_NAMED_PIPE:
-			if (mkfifo(INPUT_FILE, 0700)) {
-				perror("Named pipe creation failed");
-				return 77;
-			}
-			break;
-		case T_BLK_DEV:
+		switch (code[1]) {
+			case T_BROKEN_SYMLINK:
+				ex_linkdest[0]++;
+		}
+	} else {
+		/* XXX: replace tests */
+		unlink(INPUT_FILE);
+		unlink(OUTPUT_FILE);
+
+		switch (code[0]) {
+			case T_REGULAR:
+			case T_EMPTY:
+				if (!create_input(INPUT_FILE, code[0] == T_REGULAR)) {
+					perror("Input creation failed");
+					return 2;
+				}
+				break;
+			case T_BROKEN_SYMLINK:
+				ex_linkdest[0]++;
+			case T_SYMLINK:
+				if (symlink(ex_linkdest, INPUT_FILE)) {
+					perror("Input symlink creation failed");
+					return 77;
+				}
+				break;
+			case T_NAMED_PIPE:
+				if (mkfifo(INPUT_FILE, 0700)) {
+					perror("Named pipe creation failed");
+					return 77;
+				}
+				break;
+			case T_BLK_DEV:
 #ifdef S_IFBLK
-			if (mknod(INPUT_FILE, 0700 | S_IFBLK, 0xff00)) {
-				perror("Block device creation failed");
-				return 77;
-			}
+				if (mknod(INPUT_FILE, 0700 | S_IFBLK, 0xff00)) {
+					perror("Block device creation failed");
+					return 77;
+				}
 #else
-			fprintf(stderr, "Block devices not supported\n");
-			return 77;
+				fprintf(stderr, "Block devices not supported\n");
+				return 77;
 #endif
-			break;
-		case T_CHR_DEV:
+				break;
+			case T_CHR_DEV:
 #ifdef S_IFCHR
-			if (mknod(INPUT_FILE, 0700 | S_IFCHR, 0x0103)) {
-				perror("Character device creation failed");
-				return 77;
-			}
+				if (mknod(INPUT_FILE, 0700 | S_IFCHR, 0x0103)) {
+					perror("Character device creation failed");
+					return 77;
+				}
 #else
-			fprintf(stderr, "Character devices not supported\n");
-			return 77;
+				fprintf(stderr, "Character devices not supported\n");
+				return 77;
 #endif
-			break;
-		default:
-			fprintf(stderr, "Invalid arg: [%s]\n", code);
-			return 3;
+				break;
+			default:
+				fprintf(stderr, "Invalid arg: [%s]\n", code);
+				return 3;
+		}
 	}
 
 	ret = ai_cp_a(INPUT_FILE, OUTPUT_FILE);
