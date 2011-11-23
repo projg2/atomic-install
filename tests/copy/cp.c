@@ -13,7 +13,6 @@
 
 #include <sys/stat.h>
 #include <unistd.h>
-#include <time.h>
 
 #ifdef HAVE_STDINT_H
 #	include <stdint.h>
@@ -38,7 +37,7 @@ enum test_codes {
 	T_CHR_DEV = 'c'
 };
 
-int randumness[0x2000];
+int randumness[0x2000] = {0x777};
 char ex_linkdest[] = ADDITIONAL_TMPFILE;
 
 static int create_input(const char *path, int fill) {
@@ -47,16 +46,8 @@ static int create_input(const char *path, int fill) {
 
 	if (!f)
 		return 0;
-	if (fill) {
-		int i;
-
-		srand(time(NULL));
-		for (i = 0; i < 0x2000; i++) {
-			randumness[i] = random();
-		}
-
+	if (fill)
 		ret = (fwrite(randumness, sizeof(randumness), 1, f) == 1);
-	}
 
 	fclose(f);
 	return ret;
