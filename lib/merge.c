@@ -53,7 +53,7 @@ static int ai_mkdir_cp(char *source, char *dest, const char *path,
 		*sp = '/';
 		*dp = '/';
 
-		if (ret && ret != EEXIST)
+		if (ret && ret != EEXIST && ret != EISDIR)
 			return ret;
 
 		sp = strchr(sp+1, '/');
