@@ -43,11 +43,16 @@ typedef enum {
  * ai_merge_file_flags_t
  * @AI_MERGE_FILE_BACKED_UP: the file existed in destination tree, and thus has
  *	been backed up
+ * @AI_MERGE_FILE_REMOVE: if the file exists in the destination tree, it shall
+ *	be either replaced or removed (i.e. belongs to an older version)
+ * @AI_MERGE_FILE_IGNORE: ignore the file entry (e.g. duplicate)
  *
  * An enumeration listing file flags used by libai-merge.
  */
 typedef enum {
-	AI_MERGE_FILE_BACKED_UP = 1
+	AI_MERGE_FILE_BACKED_UP = 1,
+	AI_MERGE_FILE_REMOVE = 2,
+	AI_MERGE_FILE_IGNORE = 4
 } ai_merge_file_flags_t;
 
 /**

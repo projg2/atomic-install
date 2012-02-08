@@ -60,12 +60,28 @@ int ai_journal_create(const char *journal_path, const char *location);
 int ai_journal_create_start(const char *journal_path, const char *location,
 		ai_journal_t *ret);
 /**
+ * ai_journal_create_append
+ * @j: journal returned by ai_journal_create_start()
+ * @filename: null-terminated filename
+ * @file_flags: flags for the new file
+ *
+ * Add the specified file to the journal, with flags @file_flags.
+ *
+ * After a failure, ai_journal_create_finish() should be called in order
+ * to close the file.
+ *
+ * Returns: 0 on success, errno otherwise
+ */
+int ai_journal_create_append(ai_journal_t j, const char *filename,
+		unsigned char file_flags);
+
+/**
  * ai_journal_create_finish
  * @j: journal returned by ai_journal_create_start()
  *
  * Finish creating the new journal. Update the header and close the file.
  *
- * After a call to this function, @j becomes no longer invalid.
+ * After a call to this function, @j becomes no longer valid.
  *
  * Returns: 0 on success, errno otherwise
  */

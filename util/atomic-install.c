@@ -25,6 +25,7 @@ static const struct option opts[] = {
 	{ "help", no_argument, NULL, 'h' },
 	{ "version", no_argument, NULL, 'V' },
 
+	{ "input-files", no_argument, NULL, 'i' },
 	{ "no-replace", no_argument, NULL, 'n' },
 	{ "onestep", no_argument, NULL, '1' },
 	{ "resume", no_argument, NULL, 'r' },
@@ -40,6 +41,7 @@ static void print_help(const char *argv0) {
 "    --help, -h          this help message\n"
 "    --version, -V       print program version\n"
 "\n"
+"    --input-files, -i   read old paths from stdin (one per line)\n"
 "    --no-replace, -n    terminate before the replacement step\n"
 "    --onestep, -1       perform a smallest step possible\n"
 "    --resume, -r        resume existing merge, do not try creating new one\n"
@@ -162,12 +164,16 @@ int main(int argc, char *argv[]) {
 
 	struct sigaction sa;
 
+	int input_files = 0;
 	int resume = 0;
 
-	while ((opt = getopt_long(argc, argv, "hV1nrRv", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV1inrRv", opts, NULL)) != -1) {
 		switch (opt) {
 			case '1':
 				main_data.onestep = 1;
+				break;
+			case 'i':
+				input_files = 1;
 				break;
 			case 'n':
 				main_data.noreplace = 1;
@@ -208,11 +214,41 @@ int main(int argc, char *argv[]) {
 		printf("* Journal file open, %s.\n",
 				main_data.rollback ? "rolling back" : "resuming");
 	else if (ret == ENOENT && !resume && !main_data.rollback) {
+		ai_journal_t j;
 		printf("* Journal not found, creating...\n");
 
-		ret = ai_journal_create(main_data.journal_file, main_data.source);
+		ret = ai_journal_create_start(main_data.journal_file, main_data.source, &j);
 		if (ret) {
 			printf("Journal creation failed: %s\n", strerror(ret));
+			return ret;
+		}
+
+		if (input_files) {
+			char buf[0x8000];
+			int res;
+
+			while (fgets(buf, sizeof(buf), stdin)) {
+				const int last = strlen(buf) - 1;
+
+				if (buf[last] == '\n')
+					buf[last] = 0;
+
+				ret = ai_journal_create_append(j, buf, AI_MERGE_FILE_REMOVE);
+				if (ret) {
+					printf("Journal append failed: %s\n", strerror(ret));
+					return ret;
+				}
+			}
+
+			if (ferror(stdin)) {
+				printf("File list read failed: %s\n", strerror(errno));
+				return 1;
+			}
+		}
+
+		ret = ai_journal_create_finish(j);
+		if (ret) {
+			printf("Journal commit failed: %s\n", strerror(ret));
 			return ret;
 		}
 

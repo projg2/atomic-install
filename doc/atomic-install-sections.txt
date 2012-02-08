@@ -22,6 +22,9 @@ ai_journal_file_name
 ai_journal_file_path
 ai_journal_get_flags
 ai_journal_set_flag
+ai_journal_create_start
+ai_journal_create_append
+ai_journal_create_finish
 </SECTION>
 
 <SECTION>

@@ -12,6 +12,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifdef HAVE_STDINT_H
@@ -114,6 +117,18 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 		sprintf(oldpathbuf, "%s%s%s", source, path, name);
 		sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
 
+		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_REMOVE) {
+			struct stat tmp;
+
+			/* file exists in sourcedir -> will be replaced -> ignore */
+			if (!lstat(oldpathbuf, &tmp)) {
+				ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_IGNORE);
+				if (ret)
+					break;
+			}
+			continue;
+		}
+
 		if (progress_callback)
 			progress_callback(relpath, 0, 0);
 		ret = ai_cp_l(oldpathbuf, newpathbuf);
@@ -162,6 +177,9 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
 
+		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_REMOVE)
+			continue;
+
 		sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
 
 		if (unlink(newpathbuf) && errno != ENOENT) {
@@ -207,6 +225,9 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
+
+		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_IGNORE)
+			continue;
 
 		sprintf(oldpathbuf, "%s%s%s", dest, path, name);
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
@@ -257,6 +278,9 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
 
+		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_IGNORE)
+			continue;
+
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 
 		if (unlink(newpathbuf) && errno != ENOENT) {
@@ -303,11 +327,21 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
+		const unsigned char flags = ai_journal_file_flags(pp);
 
-		sprintf(oldpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
+		if (flags & AI_MERGE_FILE_IGNORE)
+			continue;
+
 		sprintf(newpathbuf, "%s%s%s", dest, path, name);
 
-		ret = ai_mv(oldpathbuf, newpathbuf);
+		if (flags & AI_MERGE_FILE_REMOVE) {
+			if (unlink(newpathbuf) && errno != ENOENT)
+				ret = errno;
+		} else {
+			sprintf(oldpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
+			ret = ai_mv(oldpathbuf, newpathbuf);
+		}
+
 		if (ret)
 			break;
 	}
@@ -358,9 +392,13 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
+		const unsigned char flags = ai_journal_file_flags(pp);
+
+		if (flags & AI_MERGE_FILE_IGNORE)
+			continue; /* ignore duplicates */
 
 		/* if backed up, then restore */
-		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_BACKED_UP) {
+		if (flags & AI_MERGE_FILE_BACKED_UP) {
 			sprintf(oldpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 			sprintf(newpathbuf, "%s%s%s", dest, path, name);
 
@@ -402,8 +440,11 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j) {
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
+		const unsigned char flags = ai_journal_file_flags(pp);
 
-		if (!(ai_journal_file_flags(pp) & AI_MERGE_FILE_BACKED_UP))
+		if (flags & AI_MERGE_FILE_IGNORE)
+			continue;
+		if (!(flags & AI_MERGE_FILE_BACKED_UP))
 			continue;
 
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);

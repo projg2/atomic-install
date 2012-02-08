@@ -265,6 +265,34 @@ int ai_journal_create_start(const char *journal_path, const char *location,
 	return retval;
 }
 
+int ai_journal_create_append(ai_journal_t j, const char *filename, unsigned char file_flags) {
+	FILE *outf = j->reserved.f;
+	const char *slash = strrchr(filename, '/');
+
+	assert(outf);
+	if (!slash)
+		return EINVAL;
+
+	{
+		const size_t len = strlen(filename) + 1;
+		const char *fnpart = slash + 1;
+		const size_t pathlen = fnpart - filename;
+
+		if (fputc(file_flags, outf) == EOF /* flags */
+				|| fwrite(filename, pathlen, 1, outf) != 1 /* path */
+				|| fputc(0, outf) == EOF /* sep */
+				|| fwrite(fnpart, len - pathlen, 1, outf) != 1) /* fn */
+			return errno;
+
+		j->length += len + 2;
+
+		if (j->maxpathlen < len)
+			j->maxpathlen = len;
+	}
+
+	return 0;
+}
+
 int ai_journal_create_finish(ai_journal_t j) {
 	int ret = 0;
 
