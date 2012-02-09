@@ -209,7 +209,9 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 	int ret = 0;
 
 	/* Already done? */
-	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_BACKED_OLD_UP|AI_MERGE_ROLLBACK_STARTED))
+	/* AI_MERGE_COPIED_NEW required due to AI_MERGE_FILE_REMOVE marking. */
+	if (!ai_merge_constraint_flags(j, AI_MERGE_COPIED_NEW,
+				AI_MERGE_BACKED_OLD_UP|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
 	oldpathbuf = malloc(oldpathlen);
@@ -225,11 +227,25 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
+		unsigned char flags = ai_journal_file_flags(pp);
 
-		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_IGNORE)
+		if (flags & AI_MERGE_FILE_IGNORE)
 			continue;
 
 		sprintf(oldpathbuf, "%s%s%s", dest, path, name);
+
+		if (flags & AI_MERGE_FILE_REMOVE) {
+			struct stat st;
+
+			/* omit directories */
+			if (!lstat(oldpathbuf, &st) && S_ISDIR(st.st_mode)) {
+				ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_DIR);
+				if (ret)
+					break;
+				continue;
+			}
+		}
+
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 
 		ret = ai_cp_l(oldpathbuf, newpathbuf);
@@ -335,6 +351,8 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 		sprintf(newpathbuf, "%s%s%s", dest, path, name);
 
 		if (flags & AI_MERGE_FILE_REMOVE) {
+			if (flags & AI_MERGE_FILE_DIR)
+				continue;
 			if (unlink(newpathbuf) && errno != ENOENT)
 				ret = errno;
 		} else {
@@ -447,19 +465,24 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 			sprintf(newpathbuf, "%s%s", path, name);
 			if (flags & AI_MERGE_FILE_IGNORE)
 				removal_callback(newpathbuf, EEXIST);
-			else if (!(flags & AI_MERGE_FILE_BACKED_UP))
+			else if (!(flags & (AI_MERGE_FILE_BACKED_UP|AI_MERGE_FILE_DIR)))
 				removal_callback(newpathbuf, ENOENT);
 		}
 
 		if (flags & AI_MERGE_FILE_IGNORE)
 			continue;
-		if (!(flags & AI_MERGE_FILE_BACKED_UP))
+
+		if (flags & AI_MERGE_FILE_DIR)
+			sprintf(newpathbuf, "%s%s%s", dest, path, name);
+		else if (flags & AI_MERGE_FILE_BACKED_UP)
+			sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
+		else
 			continue;
 
-		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
-
-		if (unlink(newpathbuf)) {
-			if (errno != ENOENT) {
+		if (remove(newpathbuf)) {
+			if (errno == EEXIST)
+				errno = ENOTEMPTY;
+			else if (errno != ENOENT && errno != ENOTEMPTY) {
 				ret = errno;
 				break;
 			}
