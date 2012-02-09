@@ -44,7 +44,7 @@ int ai_cp_l(const char *source, const char *dest) {
 		return 0;
 
 	/* cross-device or not supported? try manually. */
-	if (errno == EXDEV || errno == EACCES)
+	if (errno == EXDEV || errno == EACCES || errno == EPERM)
 		return ai_cp_a(source, dest);
 
 	return errno;
