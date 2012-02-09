@@ -270,7 +270,7 @@ int ai_journal_create_append(ai_journal_t j, const char *filename, unsigned char
 	const char *slash = strrchr(filename, '/');
 
 	assert(outf);
-	if (!slash)
+	if (filename[0] != '/')
 		return EINVAL;
 
 	{

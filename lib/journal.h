@@ -65,7 +65,9 @@ int ai_journal_create_start(const char *journal_path, const char *location,
  * @filename: null-terminated filename
  * @file_flags: flags for the new file
  *
- * Add the specified file to the journal, with flags @file_flags.
+ * Add the specified file to the journal, with flags @file_flags. @filename
+ * should be relative to the destination tree root, and start with a forward
+ * slash. If it doesn't, EINVAL will be returned.
  *
  * After a failure, ai_journal_create_finish() should be called in order
  * to close the file.
