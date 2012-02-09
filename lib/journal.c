@@ -29,6 +29,8 @@
 #	include <stdint.h>
 #endif
 
+#include "merge.h"
+
 /**
  * AI_JOURNAL_MAGIC
  *
@@ -162,11 +164,11 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 				is_dir = 0;
 		}
 
-		if (!is_dir) {
+		{
 			const char *fnpart = strrchr(fn, '/') + 1;
 			const size_t pathlen = fnpart - fn;
 
-			if (fputc(0, outf) == EOF /* flags */
+			if (fputc(is_dir ? AI_MERGE_FILE_DIR : 0, outf) == EOF /* flags */
 					|| fwrite(fn, pathlen, 1, outf) != 1 /* path */
 					|| fputc(0, outf) == EOF /* sep */
 					|| fwrite(fnpart, len - pathlen, 1, outf) != 1) /* fn */

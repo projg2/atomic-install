@@ -267,7 +267,7 @@ int ai_cp_a(const char *source, const char *dest) {
 
 	/* ensure to remove destination file before proceeding;
 	 * otherwise, we could rewrite hardlinked file */
-	if (unlink(dest) && errno != ENOENT)
+	if (!S_ISDIR(st.st_mode) && unlink(dest) && errno != ENOENT)
 		return errno;
 
 	/* Is it a symlink? */
@@ -276,9 +276,11 @@ int ai_cp_a(const char *source, const char *dest) {
 	else if (S_ISREG(st.st_mode))
 		ret = ai_cp_reg(source, dest, st.st_size);
 	else {
-		if (S_ISDIR(st.st_mode))
+		if (S_ISDIR(st.st_mode)) {
 			ret = mkdir(dest, st.st_mode & ~S_IFMT);
-		else if (S_ISFIFO(st.st_mode))
+			if (ret && errno == EEXIST)
+				ret = 0;
+		} else if (S_ISFIFO(st.st_mode))
 			ret = mkfifo(dest, st.st_mode & ~S_IFMT);
 		else if (0
 #ifdef S_ISCHR

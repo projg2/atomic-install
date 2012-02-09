@@ -80,6 +80,8 @@ static int ai_merge_constraint_flags(ai_journal_t j, uint32_t required, uint32_t
 	return (ai_journal_get_flags(j) & (required|unallowed)) == required;
 }
 
+typedef int (*copy_func_t)(const char*, const char*);
+
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 		ai_merge_progress_callback_t progress_callback) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
@@ -113,11 +115,19 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
+		const unsigned char flags = ai_journal_file_flags(pp);
+		copy_func_t copy_func;
 
 		sprintf(oldpathbuf, "%s%s%s", source, path, name);
-		sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
+		if (flags & AI_MERGE_FILE_DIR) {
+			sprintf(newpathbuf, "%s%s%s", dest, path, name);
+			copy_func = ai_cp_a;
+		} else {
+			sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
+			copy_func = ai_cp_l;
+		}
 
-		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_REMOVE) {
+		if (flags & AI_MERGE_FILE_REMOVE) {
 			struct stat tmp;
 
 			/* file exists in sourcedir -> will be replaced -> ignore */
@@ -131,12 +141,12 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 
 		if (progress_callback)
 			progress_callback(relpath, 0, 0);
-		ret = ai_cp_l(oldpathbuf, newpathbuf);
+		ret = copy_func(oldpathbuf, newpathbuf);
 
 		if (ret == ENOENT) {
 			ret = ai_mkdir_cp(oldpathbuf, newpathbuf, path, progress_callback);
 			if (!ret)
-				ret = ai_cp_l(oldpathbuf, newpathbuf);
+				ret = copy_func(oldpathbuf, newpathbuf);
 		}
 
 		if (ret)
@@ -176,13 +186,18 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
+		const unsigned char flags = ai_journal_file_flags(pp);
 
-		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_REMOVE)
+		if (flags & AI_MERGE_FILE_REMOVE)
 			continue;
 
-		sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
+		if (flags & AI_MERGE_FILE_DIR)
+			sprintf(newpathbuf, "%s%s%s", dest, path, name);
+		else
+			sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
 
-		if (unlink(newpathbuf) && errno != ENOENT) {
+		if (remove(newpathbuf) && errno != ENOENT
+				&& errno != ENOTEMPTY && errno != EEXIST) {
 			ret = errno;
 			break;
 		}
@@ -229,7 +244,7 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 		const char *name = ai_journal_file_name(pp);
 		unsigned char flags = ai_journal_file_flags(pp);
 
-		if (flags & AI_MERGE_FILE_IGNORE)
+		if (flags & (AI_MERGE_FILE_IGNORE|AI_MERGE_FILE_DIR))
 			continue;
 
 		sprintf(oldpathbuf, "%s%s%s", dest, path, name);
@@ -294,7 +309,7 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
 
-		if (ai_journal_file_flags(pp) & AI_MERGE_FILE_IGNORE)
+		if (ai_journal_file_flags(pp) & (AI_MERGE_FILE_IGNORE|AI_MERGE_FILE_DIR))
 			continue;
 
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
@@ -345,7 +360,7 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 		const char *name = ai_journal_file_name(pp);
 		const unsigned char flags = ai_journal_file_flags(pp);
 
-		if (flags & AI_MERGE_FILE_IGNORE)
+		if (flags & (AI_MERGE_FILE_IGNORE|AI_MERGE_FILE_DIR))
 			continue;
 
 		sprintf(newpathbuf, "%s%s%s", dest, path, name);
@@ -412,7 +427,7 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 		const char *name = ai_journal_file_name(pp);
 		const unsigned char flags = ai_journal_file_flags(pp);
 
-		if (flags & AI_MERGE_FILE_IGNORE)
+		if (flags & (AI_MERGE_FILE_IGNORE|AI_MERGE_FILE_DIR))
 			continue; /* ignore duplicates */
 
 		/* if backed up, then restore */
@@ -469,7 +484,7 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 				removal_callback(newpathbuf, ENOENT);
 		}
 
-		if (flags & AI_MERGE_FILE_IGNORE)
+		if (flags & (AI_MERGE_FILE_IGNORE|AI_MERGE_FILE_DIR))
 			continue;
 
 		if (flags & AI_MERGE_FILE_DIR)
