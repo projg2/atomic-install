@@ -55,6 +55,17 @@ static void print_progress(const char *path, unsigned long int megs, unsigned lo
 		printf(">>> %s\n", path);
 }
 
+static void print_removal(const char *path, int result) {
+	if (!result)
+		printf("<<<          %s\n", path);
+	else if (result == EEXIST)
+		printf("--- REPLACED %s\n", path);
+	else if (result == ENOENT)
+		printf("--- !EXIST   %s\n", path);
+	else if (result == ENOTEMPTY)
+		printf("--- !EMPTY   %s\n", path);
+}
+
 struct loop_data {
 	ai_journal_t j;
 
@@ -109,7 +120,8 @@ static int loop(struct loop_data *d) {
 			break;
 		} else if (flags & AI_MERGE_REPLACED) {
 			printf("* Post-merge clean up...\n");
-			ret = ai_merge_cleanup(d->dest, d->j);
+			ret = ai_merge_cleanup(d->dest, d->j,
+					d->verbose ? print_removal : NULL);
 			if (ret)
 				printf("Cleanup failed: %s\n", strerror(ret));
 			else {

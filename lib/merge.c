@@ -418,7 +418,8 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 	return ret == ENOENT ? 0 : ret;
 }
 
-int ai_merge_cleanup(const char *dest, ai_journal_t j) {
+int ai_merge_cleanup(const char *dest, ai_journal_t j,
+		ai_merge_removal_callback_t removal_callback) {
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
 	/* maxpathlen covers path + filename, + 1 for null terminator
@@ -442,6 +443,14 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j) {
 		const char *name = ai_journal_file_name(pp);
 		const unsigned char flags = ai_journal_file_flags(pp);
 
+		if (removal_callback && (flags & AI_MERGE_FILE_REMOVE)) {
+			sprintf(newpathbuf, "%s%s", path, name);
+			if (flags & AI_MERGE_FILE_IGNORE)
+				removal_callback(newpathbuf, EEXIST);
+			else if (!(flags & AI_MERGE_FILE_BACKED_UP))
+				removal_callback(newpathbuf, ENOENT);
+		}
+
 		if (flags & AI_MERGE_FILE_IGNORE)
 			continue;
 		if (!(flags & AI_MERGE_FILE_BACKED_UP))
@@ -452,6 +461,11 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j) {
 		if (unlink(newpathbuf) && errno != ENOENT) {
 			ret = errno;
 			break;
+		}
+
+		if (removal_callback && (flags & AI_MERGE_FILE_REMOVE)) {
+			sprintf(newpathbuf, "%s%s", path, name);
+			removal_callback(newpathbuf, 0);
 		}
 	}
 

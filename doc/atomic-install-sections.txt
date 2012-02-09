@@ -32,6 +32,7 @@ ai_journal_create_finish
 ai_merge_flags_t
 ai_merge_file_flags_t
 ai_merge_progress_callback_t
+ai_merge_removal_callback_t
 ai_merge_copy_new
 ai_merge_backup_old
 ai_merge_replace

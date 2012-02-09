@@ -18,6 +18,8 @@
  * Note: the API is unstable right now, and will be undergoing changes.
  */
 
+#include <ccattr.h>
+
 #include "journal.h"
 
 /**
@@ -73,6 +75,24 @@ typedef void (*ai_merge_progress_callback_t)(
 		const char *path,
 		unsigned long int megs,
 		unsigned long int total);
+
+/**
+ * ai_merge_removal_callback_t
+ * @path: relative path to the file being processed
+ * @result: result of processing (in form of errno)
+ *
+ * Removal process callback function. Called for each file appended to journal
+ * when performing cleanup.
+ *
+ * @result can be:
+ * - 0 - if file/directory was removed successfully,
+ * - EEXIST - if file was replaced during merge,
+ * - ENOENT - file didn't exist,
+ * - ENOTEMPTY - if directory is not empty.
+ */
+typedef void (*ai_merge_removal_callback_t)(
+		const char *path,
+		int result);
 
 /**
  * ai_merge_copy_new
@@ -138,13 +158,15 @@ int ai_merge_replace(const char *dest, ai_journal_t j);
  * ai_merge_cleanup
  * @dest: path to the destination tree
  * @j: an open journal
+ * @removal_callback: callback function for removal progress reporting, or %NULL
  *
  * Remove stale temporary files in the destination tree after replacement
  * succeeds. This function can be used only after successful ai_merge_replace().
  *
  * Returns: 0 on success, errno otherwise
  */
-int ai_merge_cleanup(const char *dest, ai_journal_t j);
+int ai_merge_cleanup(const char *dest, ai_journal_t j,
+		ai_merge_removal_callback_t removal_callback);
 
 /**
  * ai_merge_rollback_old
