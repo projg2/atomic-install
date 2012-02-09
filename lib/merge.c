@@ -458,14 +458,17 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 
-		if (unlink(newpathbuf) && errno != ENOENT) {
-			ret = errno;
-			break;
-		}
+		if (unlink(newpathbuf)) {
+			if (errno != ENOENT) {
+				ret = errno;
+				break;
+			}
+		} else
+			errno = 0;
 
 		if (removal_callback && (flags & AI_MERGE_FILE_REMOVE)) {
 			sprintf(newpathbuf, "%s%s", path, name);
-			removal_callback(newpathbuf, 0);
+			removal_callback(newpathbuf, errno);
 		}
 	}
 
