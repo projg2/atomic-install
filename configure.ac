@@ -7,9 +7,7 @@ AM_INIT_AUTOMAKE([1.6 foreign dist-bzip2 -Wall])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 
 AC_PROG_CC
-AM_PROG_CC_C_O
 AC_USE_SYSTEM_EXTENSIONS
-LT_INIT([disable-static])
 
 AC_CHECK_FUNCS([fchmodat flock posix_fallocate posix_fadvise sync utimensat])
 
