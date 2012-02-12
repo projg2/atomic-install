@@ -10,7 +10,6 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_USE_SYSTEM_EXTENSIONS
 LT_INIT([disable-static])
-GTK_DOC_CHECK([1.15])
 
 AC_CHECK_FUNCS([fchmodat flock posix_fallocate posix_fadvise sync utimensat])
 
@@ -39,5 +38,5 @@ AS_IF([test x"$enable_debug" = x"no"], [
 ])
 
 AC_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile doc/Makefile])
+AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
