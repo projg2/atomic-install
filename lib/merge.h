@@ -18,8 +18,6 @@
  * Note: the API is unstable right now, and will be undergoing changes.
  */
 
-#include <ccattr.h>
-
 #include "journal.h"
 
 /**
