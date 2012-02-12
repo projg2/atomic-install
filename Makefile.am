@@ -1,11 +1,11 @@
 ACLOCAL_AMFLAGS = -I m4
 
-bin_PROGRAMS = util/atomic-install
+bin_PROGRAMS = atomic-install
 
-util_atomic_install_SOURCES = util/atomic-install.c \
-	lib/copy.c lib/copy.h lib/journal.c lib/journal.h \
-	lib/merge.c lib/merge.h
-util_atomic_install_LDADD = $(ATTR_LIBS)
+atomic_install_SOURCES = src/atomic-install.c \
+	src/copy.c src/copy.h src/journal.c src/journal.h \
+	src/merge.c src/merge.h
+atomic_install_LDADD = $(ATTR_LIBS)
 
 EXTRA_DIST = NEWS
 NEWS: configure.ac Makefile.am
