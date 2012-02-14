@@ -100,11 +100,11 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_COPIED_NEW|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
-	oldpathbuf = malloc(oldpathlen);
+	oldpathbuf = (char*) malloc(oldpathlen);
 	if (!oldpathbuf)
 		return errno;
 
-	newpathbuf = malloc(newpathlen);
+	newpathbuf = (char*) malloc(newpathlen);
 	if (!newpathbuf) {
 		free(oldpathbuf);
 		return errno;
@@ -179,7 +179,7 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 	if (ret)
 		return ret;
 
-	newpathbuf = malloc(newpathlen);
+	newpathbuf = (char*) malloc(newpathlen);
 	if (!newpathbuf)
 		return errno;
 
@@ -229,11 +229,11 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 				AI_MERGE_BACKED_OLD_UP|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
-	oldpathbuf = malloc(oldpathlen);
+	oldpathbuf = (char*) malloc(oldpathlen);
 	if (!oldpathbuf)
 		return errno;
 
-	newpathbuf = malloc(newpathlen);
+	newpathbuf = (char*) malloc(newpathlen);
 	if (!newpathbuf) {
 		free(oldpathbuf);
 		return errno;
@@ -301,7 +301,7 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 	if (ret)
 		return ret;
 
-	newpathbuf = malloc(newpathlen);
+	newpathbuf = (char*) malloc(newpathlen);
 	if (!newpathbuf)
 		return errno;
 
@@ -345,11 +345,11 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 				AI_MERGE_REPLACED|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
-	oldpathbuf = malloc(oldpathlen);
+	oldpathbuf = (char*) malloc(oldpathlen);
 	if (!oldpathbuf)
 		return errno;
 
-	newpathbuf = malloc(newpathlen);
+	newpathbuf = (char*) malloc(newpathlen);
 	if (!newpathbuf) {
 		free(oldpathbuf);
 		return errno;
@@ -407,11 +407,11 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 				AI_MERGE_REPLACED))
 		return EINVAL;
 
-	oldpathbuf = malloc(oldpathlen);
+	oldpathbuf = (char*) malloc(oldpathlen);
 	if (!oldpathbuf)
 		return errno;
 
-	newpathbuf = malloc(newpathlen);
+	newpathbuf = (char*) malloc(newpathlen);
 	if (!newpathbuf) {
 		free(oldpathbuf);
 		return errno;
@@ -467,7 +467,7 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 	if (!ai_merge_constraint_flags(j, AI_MERGE_REPLACED, 0))
 		return EINVAL;
 
-	newpathbuf = malloc(newpathlen);
+	newpathbuf = (char*) malloc(newpathlen);
 	if (!newpathbuf)
 		return errno;
 

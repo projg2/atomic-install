@@ -107,7 +107,7 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 	struct dirent *dent;
 	int ret;
 
-	fn = malloc(strlen(root) + strlen(path) + 1);
+	fn = (char*) malloc(strlen(root) + strlen(path) + 1);
 	if (!fn)
 		return errno;
 	sprintf(fn, "%s%s", root, path);
@@ -152,7 +152,7 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 
 		/* Prepare the relative path */
 		len = strlen(path) + strlen(dent->d_name) + 2;
-		fn = malloc(len);
+		fn = (char*) malloc(len);
 		if (!fn)
 			break;
 		sprintf(fn, "%s/%s", path, dent->d_name);
@@ -223,7 +223,7 @@ int ai_journal_create_start(const char *journal_path, const char *location,
 
 	int retval;
 
-	newj = malloc(sizeof(*newj));
+	newj = (ai_journal*) malloc(sizeof(*newj));
 	if (!newj)
 		return errno;
 
@@ -351,7 +351,7 @@ int ai_journal_open(const char *journal_path, ai_journal_t *ret) {
 			break;
 		}
 
-		*ret = mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+		*ret = (ai_journal_t) mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 		if (!ret) {
 			retval = errno;
 			break;

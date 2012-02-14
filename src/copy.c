@@ -71,7 +71,7 @@ static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
 	/* ensure buffer is at least symlen+1 long */
 	if (!buf || bufsize <= symlen) {
 		bufsize = symlen + 1;
-		buf = realloc(buf, bufsize);
+		buf = (char*) realloc(buf, bufsize);
 		if (!buf)
 			return errno;
 	}
