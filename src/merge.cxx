@@ -21,49 +21,52 @@
 #	include <stdint.h>
 #endif
 
-/**
- * ai_mkdir_cp
- * @source: source tree path buffer
- * @dest: dest tree path buffer
- * @path: path relative to both trees
- *
- * Create all missing directories for @path in @dest tree. Copy attributes for
- * the newly-created directories from @source tree.
- *
- * Note that both @source and @dest will be modified during run-time, thus they
- * have to be writable. The initial contents will be restored on return.
- *
- * Returns: 0 on success, errno on failure
- */
-static int ai_mkdir_cp(char *source, char *dest, const char *path,
-		ai_merge_progress_callback_t progress_callback) {
+#include <stdexcept>
+
+#include "exceptions.hxx"
+
+namespace ai = atomic_install;
+
+static void ai_mkdir_cp(char *source, char *dest, const char *path,
+		ai_merge_progress_callback_t progress_callback)
+{
 	char *sp = strrchr(source, '/') - strlen(path) + 1;
 	char *dp = strrchr(dest, '/') - strlen(path) + 1;
 
 	const char *relpath = sp;
 
 	while (sp) {
-		int ret;
-
 		*sp = 0;
 		*dp = 0;
 
 		if (progress_callback && *relpath)
 			progress_callback(relpath, 0, 0);
 		/* Try to copy the directory entry */
-		ret = ai_cp_a(source, dest);
+		try
+		{
+			try
+			{
+				ai_cp_a(source, dest);
+			}
+			catch (ai::io_error& e)
+			{
+				if (e != EEXIST && e != EISDIR)
+					throw;
+			}
+		}
+		catch (std::exception& e)
+		{
+			*sp = '/';
+			*dp = '/';
 
+			throw;
+		}
 		*sp = '/';
 		*dp = '/';
-
-		if (ret && ret != EEXIST && ret != EISDIR)
-			return ret;
 
 		sp = strchr(sp+1, '/');
 		dp = strchr(dp+1, '/');
 	}
-
-	return 0;
 }
 
 /**
@@ -80,10 +83,11 @@ static int ai_merge_constraint_flags(ai_journal_t j, uint32_t required, uint32_t
 	return (ai_journal_get_flags(j) & (required|unallowed)) == required;
 }
 
-typedef int (*copy_func_t)(const char*, const char*);
+typedef void (*copy_func_t)(const char*, const char*);
 
 int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
-		ai_merge_progress_callback_t progress_callback) {
+		ai_merge_progress_callback_t progress_callback)
+{
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
 	/* maxpathlen covers path + filename, + 1 for null terminator */
@@ -93,8 +97,6 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 
 	ai_journal_file_t *pp;
 	const char *relpath;
-
-	int ret = 0;
 
 	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_COPIED_NEW|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
@@ -124,32 +126,34 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 
 			/* file exists in sourcedir -> will be replaced -> ignore */
 			if (!lstat(oldpathbuf, &tmp)) {
-				ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_IGNORE);
-				if (ret)
-					break;
+				const int sf_ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_IGNORE);
+				if (sf_ret)
+					return sf_ret;
 			}
 			continue;
 		}
 
 		if (progress_callback)
 			progress_callback(relpath, 0, 0);
-		ret = copy_func(oldpathbuf, newpathbuf);
-
-		if (ret == ENOENT) {
-			ret = ai_mkdir_cp(oldpathbuf, newpathbuf, path, progress_callback);
-			if (!ret)
-				ret = copy_func(oldpathbuf, newpathbuf);
+		try
+		{
+			copy_func(oldpathbuf, newpathbuf);
 		}
-
-		if (ret)
-			break;
+		catch (ai::io_error& e)
+		{
+			// try to create parent directories
+			if (e == ENOENT)
+			{
+				ai_mkdir_cp(oldpathbuf, newpathbuf, path, progress_callback);
+				copy_func(oldpathbuf, newpathbuf);
+			}
+		}
 	}
 
 	/* Mark as done. */
-	if (!ret)
-		ret = ai_journal_set_flag(j, AI_MERGE_COPIED_NEW);
+	ai_journal_set_flag(j, AI_MERGE_COPIED_NEW);
 
-	return ret;
+	return 0;
 }
 
 int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
@@ -160,12 +164,10 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 
 	ai_journal_file_t *pp;
 
-	int ret = 0;
-
 	/* Mark rollback as started. */
-	ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
-	if (ret)
-		return ret;
+	const int sf_ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
+	if (sf_ret)
+		return sf_ret;
 
 	char newpathbuf[newpathlen];
 
@@ -183,18 +185,17 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 			sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
 
 		if (remove(newpathbuf) && errno != ENOENT
-				&& errno != ENOTEMPTY && errno != EEXIST) {
-			ret = errno;
-			break;
-		}
+				&& errno != ENOTEMPTY && errno != EEXIST)
+			throw ai::io_error("remove()", errno, newpathbuf);
 
 		/* XXX: remove new directories */
 	}
 
-	return ret;
+	return 0;
 }
 
-int ai_merge_backup_old(const char *dest, ai_journal_t j) {
+int ai_merge_backup_old(const char *dest, ai_journal_t j)
+{
 	const uint64_t maxpathlen = ai_journal_get_maxpathlen(j);
 	const char *fn_prefix = ai_journal_get_filename_prefix(j);
 	/* maxpathlen covers path + filename, + 1 for null terminator */
@@ -203,8 +204,6 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
 	ai_journal_file_t *pp;
-
-	int ret = 0;
 
 	/* Already done? */
 	/* AI_MERGE_COPIED_NEW required due to AI_MERGE_FILE_REMOVE marking. */
@@ -215,7 +214,8 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 	char oldpathbuf[oldpathlen];
 	char newpathbuf[newpathlen];
 
-	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
+	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp))
+	{
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
 		unsigned char flags = ai_journal_file_flags(pp);
@@ -225,32 +225,38 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 
 		sprintf(oldpathbuf, "%s%s%s", dest, path, name);
 
-		if (flags & AI_MERGE_FILE_REMOVE) {
+		if (flags & AI_MERGE_FILE_REMOVE)
+		{
 			struct stat st;
 
 			/* omit directories */
 			if (!lstat(oldpathbuf, &st) && S_ISDIR(st.st_mode)) {
-				ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_DIR);
-				if (ret)
-					break;
+				const int sf_ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_DIR);
+				if (sf_ret)
+					return sf_ret;
 				continue;
 			}
 		}
 
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 
-		ret = ai_cp_l(oldpathbuf, newpathbuf);
-		if (!ret)
-			ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_BACKED_UP);
-		if (ret && ret != ENOENT)
-			break;
+		try
+		{
+			ai_cp_l(oldpathbuf, newpathbuf);
+			const int sf_ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_BACKED_UP);
+			if (sf_ret)
+				return sf_ret;
+		}
+		catch (ai::io_error& e)
+		{
+			if (e != ENOENT)
+				throw;
+		}
 	}
 
 	/* Mark as done. */
-	if (!ret || ret == ENOENT)
-		ret = ai_journal_set_flag(j, AI_MERGE_BACKED_OLD_UP);
-
-	return ret;
+	const int sf_ret = ai_journal_set_flag(j, AI_MERGE_BACKED_OLD_UP);
+	return sf_ret;
 }
 
 int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
@@ -262,16 +268,14 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 
 	ai_journal_file_t *pp;
 
-	int ret = 0;
-
 	/* replace could be started already; we need to rollback that instead */
 	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_BACKED_OLD_UP))
 		return EINVAL;
 
 	/* Mark rollback as started. */
-	ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
-	if (ret)
-		return ret;
+	const int sf_ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
+	if (sf_ret)
+		return sf_ret;
 
 	char newpathbuf[newpathlen];
 
@@ -284,15 +288,13 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 
 		sprintf(newpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 
-		if (unlink(newpathbuf) && errno != ENOENT) {
-			ret = errno;
-			break;
-		}
+		if (unlink(newpathbuf) && errno != ENOENT)
+			throw ai::io_error("unlink()", errno, newpathbuf);
 
 		/* XXX: remove new directories */
 	}
 
-	return ret;
+	return 0;
 }
 
 int ai_merge_replace(const char *dest, ai_journal_t j) {
@@ -304,8 +306,6 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 	const size_t oldpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
 	ai_journal_file_t *pp;
-
-	int ret = 0;
 
 	if (!ai_merge_constraint_flags(j,
 				AI_MERGE_COPIED_NEW|AI_MERGE_BACKED_OLD_UP,
@@ -329,21 +329,16 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 			if (flags & AI_MERGE_FILE_DIR)
 				continue;
 			if (unlink(newpathbuf) && errno != ENOENT)
-				ret = errno;
+				throw ai::io_error("unlink()", errno, newpathbuf);
 		} else {
 			sprintf(oldpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
-			ret = ai_mv(oldpathbuf, newpathbuf);
+			ai_mv(oldpathbuf, newpathbuf);
 		}
-
-		if (ret)
-			break;
 	}
 
 	/* Mark as done. */
-	if (!ret)
-		ret = ai_journal_set_flag(j, AI_MERGE_REPLACED);
-
-	return ret;
+	const int sf_ret = ai_journal_set_flag(j, AI_MERGE_REPLACED);
+	return sf_ret;
 }
 
 int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
@@ -356,8 +351,6 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 
 	ai_journal_file_t *pp;
 
-	int ret = 0;
-
 	if (!ai_merge_constraint_flags(j,
 				AI_MERGE_COPIED_NEW|AI_MERGE_BACKED_OLD_UP,
 				AI_MERGE_REPLACED))
@@ -367,11 +360,12 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 	char newpathbuf[newpathlen];
 
 	/* Mark rollback as started. */
-	ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
-	if (ret)
-		return ret;
+	const int sf_ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
+	if (sf_ret)
+		return sf_ret;
 
-	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
+	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp))
+	{
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
 		const unsigned char flags = ai_journal_file_flags(pp);
@@ -379,22 +373,31 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 		if (flags & (AI_MERGE_FILE_IGNORE|AI_MERGE_FILE_DIR))
 			continue; /* ignore duplicates */
 
-		/* if backed up, then restore */
-		if (flags & AI_MERGE_FILE_BACKED_UP) {
-			sprintf(oldpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
-			sprintf(newpathbuf, "%s%s%s", dest, path, name);
+		try
+		{
+			/* if backed up, then restore */
+			if (flags & AI_MERGE_FILE_BACKED_UP)
+			{
+				sprintf(oldpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
+				sprintf(newpathbuf, "%s%s%s", dest, path, name);
 
-			ret = ai_mv(oldpathbuf, newpathbuf);
-		} else { /* just unlink the new one */
-			if (unlink(newpathbuf))
-				ret = errno;
+				ai_mv(oldpathbuf, newpathbuf);
+			}
+			else
+			{
+				// just unlink the new one
+				if (unlink(newpathbuf))
+					throw ai::io_error("unlink()", errno, newpathbuf);
+			}
 		}
-
-		if (ret && ret != ENOENT)
-			break;
+		catch (ai::io_error& e)
+		{
+			if (e != ENOENT)
+				throw;
+		}
 	}
 
-	return ret == ENOENT ? 0 : ret;
+	return 0;
 }
 
 int ai_merge_cleanup(const char *dest, ai_journal_t j,
@@ -407,14 +410,13 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 
 	ai_journal_file_t *pp;
 
-	int ret = 0;
-
 	if (!ai_merge_constraint_flags(j, AI_MERGE_REPLACED, 0))
 		return EINVAL;
 
 	char newpathbuf[newpathlen];
 
-	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
+	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp))
+	{
 		const char *path = ai_journal_file_path(pp);
 		const char *name = ai_journal_file_name(pp);
 		const unsigned char flags = ai_journal_file_flags(pp);
@@ -437,14 +439,14 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 		else
 			continue;
 
-		if (remove(newpathbuf)) {
+		if (remove(newpathbuf))
+		{
 			if (errno == EEXIST)
 				errno = ENOTEMPTY;
-			else if (errno != ENOENT && errno != ENOTEMPTY) {
-				ret = errno;
-				break;
-			}
-		} else
+			else if (errno != ENOENT && errno != ENOTEMPTY)
+				throw ai::io_error("remove()", errno, newpathbuf);
+		}
+		else
 			errno = 0;
 
 		if (removal_callback && (flags & AI_MERGE_FILE_REMOVE)) {
@@ -453,5 +455,5 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 		}
 	}
 
-	return ret;
+	return 0;
 }

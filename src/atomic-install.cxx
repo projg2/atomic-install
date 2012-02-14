@@ -20,8 +20,11 @@
 
 #include <iostream>
 
+#include "exceptions.hxx"
 #include "journal.hxx"
 #include "merge.hxx"
+
+namespace ai = atomic_install;
 
 static const struct option opts[] = {
 	{ "help", no_argument, NULL, 'h' },
@@ -86,7 +89,8 @@ struct loop_data main_data;
 static int loop(struct loop_data *d) {
 	int ret = 0;
 
-	while (1) {
+	while (1)
+	{
 		const uint32_t flags = ai_journal_get_flags(d->j);
 
 		if (flags & AI_MERGE_ROLLBACK_STARTED || d->rollback) {
@@ -288,7 +292,18 @@ int main(int argc, char *argv[]) {
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGHUP, &sa, NULL);
 
-	ret = loop(&main_data);
+	try
+	{
+		ret = loop(&main_data);
+	}
+	catch (ai::io_error& e)
+	{
+		std::cerr << e << std::endl;
+	}
+	catch (std::exception& e)
+	{
+		std::cerr << "Runtime error: " << e.what() << std::endl;
+	}
 
 	ret2 = ai_journal_close(main_data.j);
 	if (ret2)

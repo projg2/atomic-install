@@ -20,98 +20,93 @@
 #	include <attr/libattr.h>
 #endif
 
-int ai_mv(const char *source, const char *dest) {
+#include <stdexcept>
+#include "exceptions.hxx"
+
+namespace ai = atomic_install;
+
+void ai_mv(const char *source, const char *dest)
+{
 	if (!rename(source, dest))
-		return 0;
+		return;
 
 	/* cross-device? try manually. */
-	if (errno == EXDEV) {
-		int ret = ai_cp_a(source, dest);
-		if (!ret)
+	if (errno == EXDEV)
+	{
+		try
+		{
+			ai_cp_a(source, dest);
+		}
+		catch (std::exception& e)
+		{
 			unlink(source);
-		return ret;
+			throw;
+		};
 	}
-
-	return errno;
+	else
+		throw ai::io_error("rename()", errno, source, dest);
 }
 
-int ai_cp_l(const char *source, const char *dest) {
+void ai_cp_l(const char *source, const char *dest)
+{
 	/* link() will not overwrite */
 	if (unlink(dest) && errno != ENOENT)
-		return errno;
+		throw ai::io_error("unlink()", errno, dest);
 
 	if (!link(source, dest))
-		return 0;
+		return;
 
 	/* cross-device or not supported? try manually. */
 	if (errno == EXDEV || errno == EACCES || errno == EPERM)
-		return ai_cp_a(source, dest);
-
-	return errno;
+		ai_cp_a(source, dest);
+	else
+		throw ai::io_error("link()", errno, source, dest);
 }
 
-/**
- * ai_cp_symlink
- * @source: current file path
- * @dest: new complete file path
- * @symlen: symlink length (obligatory)
- *
- * Create a copy of symlink @source at @dest. The @symlen should state the exact
- * length of the symlink (as reported by lstat()) as it is used for buffer
- * allocation.
- *
- * If @symlen is too small, the function returns EINVAL.
- *
- * Returns: 0 on success, errno on failure
- */
-static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
+static void ai_cp_symlink(const char *source, const char *dest, ssize_t symlen)
+{
 	char buf[symlen + 1];
 
 	/* ensure content length didn't change */
 	if (readlink(source, buf, symlen + 1) != symlen)
-		return EINVAL; /* XXX? */
+		throw std::runtime_error("symlink length changed"); // XXX
 
 	/* null terminate */
 	buf[symlen + 1] = 0;
 
 	if (symlink(buf, dest))
-		return errno;
-	return 0;
+		throw ai::io_error("symlink()", errno, buf, dest);
 }
 
 #ifndef AI_BUFSIZE
 #	define AI_BUFSIZE 65536
 #endif
 
-/**
- * ai_splice
- * @fd_in: input fd
- * @fd_out: output fd
- *
- * Copy a block of data from @fd_in to @fd_out.
- *
- * Returns: positive number on success, 0 on EOF, -1 on failure
- *	(and errno is set then)
- */
-static int ai_splice(int fd_in, int fd_out) {
+static int ai_splice(int fd_in, int fd_out)
+{
 	static char buf[AI_BUFSIZE];
 	char *bufp = buf;
 	ssize_t ret, wr = 0;
 
 	ret = read(fd_in, buf, sizeof(buf));
-	if (ret == -1) {
+	if (ret == -1)
+	{
 		if (errno == EINTR)
-			return 1;
+			return 1; // force retry
 		else
-			return -1;
+			throw ai::io_error("read() [source]", errno);
 	}
 
-	while (ret > 0) {
+	while (ret > 0)
+	{
 		wr = write(fd_out, bufp, ret);
-		if (wr == -1) {
+		if (wr == -1)
+		{
 			if (errno != EINTR)
-				return -1;
-		} else {
+				throw ai::io_error("write() [dest]", errno);
+		}
+		else
+		{
 			ret -= wr;
 			bufp += wr;
 		}
@@ -120,94 +115,87 @@ static int ai_splice(int fd_in, int fd_out) {
 	return wr;
 }
 
-/**
- * ai_cp_reg
- * @source: current file path
- * @dest: new complete file path
- * @expsize: expected file length (for preallocation)
- *
- * Copies the contents of @source to a new file at @dest (@dest is unlinked
- * first).
- *
- * The destination file will be preallocated to size @expsize if possible.
- * However, this is no hard limit and the actual file length may be larger.
- * If it shorter, the file may be padded.
- *
- * Returns: 0 on success, errno on failure
- */
-static int ai_cp_reg(const char *source, const char *dest, off_t expsize) {
+static void ai_cp_reg(const char *source, const char *dest, off_t expsize)
+{
 	int fd_in, fd_out;
-	int ret = 0, splret;
+	int splret;
 
 	fd_in = open(source, O_RDONLY);
 	if (fd_in == -1)
-		return errno;
+		throw ai::io_error("open()", errno, source);
 
 	/* don't care about perms, will have to chmod anyway */
 	fd_out = creat(dest, 0666);
-	if (fd_out == -1) {
+	if (fd_out == -1)
+	{
 		const int tmp = errno;
 		close(fd_in);
-		return tmp;
+		throw ai::io_error("creat()", tmp, dest);
 	}
 
 #ifdef HAVE_POSIX_FALLOCATE
 	if (expsize != 0)
-		ret = posix_fallocate(fd_out, 0, expsize);
+	{
+		const int ret = posix_fallocate(fd_out, 0, expsize);
+
+		if (ret) {
+			close(fd_out);
+			close(fd_in);
+			throw ai::io_error("posix_fallocate()", ret, dest);
+		}
+	}
 #endif
 
 #ifdef HAVE_POSIX_FADVISE
 	posix_fadvise(fd_in, 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 	posix_fadvise(fd_out, 0, 0, POSIX_FADV_SEQUENTIAL);
 #endif
-	if (!ret) {
-		do {
+	do
+	{
+		try
+		{
 			splret = ai_splice(fd_in, fd_out);
-
-			if (splret == -1)
-				ret = errno;
-		} while (splret > 0);
+		}
+		catch (ai::io_error& e)
+		{
+			close(fd_out);
+			close(fd_in);
+			e.set_paths(source, dest);
+		}
 	}
+	while (splret > 0);
 
-	if (close(fd_out) && !ret)
-		ret = errno;
+	if (close(fd_out))
+		throw ai::io_error("close() [open for writing]", errno, dest);
 	close(fd_in);
-
-	return ret;
 }
 
-/**
- * ai_cp_stat
- * @dest: destination file
- * @st: struct with lstat() results
- *
- * Set ownership, permissions and timestamps from @st to destination file @dest.
- *
- * Returns: 0 on success, errno on failure
- */
-static int ai_cp_stat(const char *dest, struct stat st) {
+static void ai_cp_stat(const char *dest, struct stat st)
+{
 	if (lchown(dest, st.st_uid, st.st_gid))
-		return errno;
+		throw ai::io_error("lchown()", errno, dest);
 
 	/* there's no point in copying directory mtime,
 	 * it will be modified when copying files anyway */
-	if (!S_ISDIR(st.st_mode)) {
+	if (!S_ISDIR(st.st_mode))
+	{
 #ifdef HAVE_UTIMENSAT
 		struct timespec ts[2];
 
 		ts[0] = st.st_atim;
 		ts[1] = st.st_mtim;
 		if (utimensat(AT_FDCWD, dest, ts, AT_SYMLINK_NOFOLLOW))
-			return errno;
+			throw ai::io_error("utimensat()", errno, dest);
 #else
 		/* utime() can't handle touching symlinks */
-		if (!S_ISLNK(st.st_mode)) {
+		if (!S_ISLNK(st.st_mode))
+		{
 			struct utimbuf ts;
 
 			ts.actime = st.st_atime;
 			ts.modtime = st.st_mtime;
 			if (utime(dest, &ts))
-				return errno;
+				throw ai::io_error("utime()", errno, dest);
 		}
 #endif
 	}
@@ -224,55 +212,52 @@ static int ai_cp_stat(const char *dest, struct stat st) {
 			&& errno != ENOTSUP
 #endif
 			)
-		return errno;
+		throw ai::io_error("fchmodat()", errno, dest);
 	else
 #endif
-	if (!S_ISLNK(st.st_mode)) {
+	if (!S_ISLNK(st.st_mode))
+	{
 		if (chmod(dest, st.st_mode & ~S_IFMT))
-			return errno;
+			throw ai::io_error("chmod()", errno, dest);
 	}
-
-	return 0;
 }
 
-/**
- * ai_cp_attr
- * @source: source file
- * @dest: destination file
- *
- * Copy extended attributes from @source to @dest.
- */
-static void ai_cp_attr(const char *source, const char *dest) {
+static void ai_cp_attr(const char *source, const char *dest)
+{
 #ifdef HAVE_LIBATTR
 	attr_copy_file(source, dest, NULL, NULL);
 #endif
 }
 
-int ai_cp_a(const char *source, const char *dest) {
-	int ret;
+void ai_cp_a(const char *source, const char *dest)
+{
 	struct stat st;
 
 	/* First lstat() it, see what we got. */
 	if (lstat(source, &st))
-		return errno;
+		throw ai::io_error("lstat()", errno, source);
 
 	/* ensure to remove destination file before proceeding;
 	 * otherwise, we could rewrite hardlinked file */
 	if (!S_ISDIR(st.st_mode) && unlink(dest) && errno != ENOENT)
-		return errno;
+		throw ai::io_error("unlink()", errno, dest);
 
 	/* Is it a symlink? */
 	if (S_ISLNK(st.st_mode))
-		ret = ai_cp_symlink(source, dest, st.st_size);
+		ai_cp_symlink(source, dest, st.st_size);
 	else if (S_ISREG(st.st_mode))
-		ret = ai_cp_reg(source, dest, st.st_size);
-	else {
+		ai_cp_reg(source, dest, st.st_size);
+	else
+	{
 		if (S_ISDIR(st.st_mode)) {
-			ret = mkdir(dest, st.st_mode & ~S_IFMT);
-			if (ret && errno == EEXIST)
-				ret = 0;
-		} else if (S_ISFIFO(st.st_mode))
-			ret = mkfifo(dest, st.st_mode & ~S_IFMT);
+			if (mkdir(dest, st.st_mode & ~S_IFMT) && errno != EEXIST)
+				throw ai::io_error("mkdir()", errno, dest);
+		}
+		else if (S_ISFIFO(st.st_mode))
+		{
+			if (mkfifo(dest, st.st_mode & ~S_IFMT))
+				throw ai::io_error("mkfifo()", errno, dest);
+		}
 		else if (0
 #ifdef S_ISCHR
 				|| S_ISCHR(st.st_mode)
@@ -281,20 +266,14 @@ int ai_cp_a(const char *source, const char *dest) {
 				|| S_ISBLK(st.st_mode)
 #endif
 				)
-			ret = mknod(dest, st.st_mode, st.st_rdev);
-		else
-			return EINVAL;
-
-		if (ret)
-			ret = errno;
-	}
-
-	if (!ret) {
-		ret = ai_cp_stat(dest, st);
-		if (!ret) {
-			ai_cp_attr(source, dest);
+		{
+			if (mknod(dest, st.st_mode, st.st_rdev))
+				throw ai::io_error("mknod()", errno, dest);
 		}
+		else
+			throw std::runtime_error("Invalid file type"); // XXX
 	}
 
-	return ret;
+	ai_cp_stat(dest, st);
+	ai_cp_attr(source, dest);
 }
