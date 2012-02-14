@@ -18,6 +18,8 @@
 #include <getopt.h>
 #include <signal.h>
 
+#include <iostream>
+
 #include "journal.hxx"
 #include "merge.hxx"
 
@@ -34,8 +36,9 @@ static const struct option opts[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static void print_help(const char *argv0) {
-	printf("Usage: %s [options] journal-file source dest\n"
+static void print_help(const char *argv0)
+{
+	std::cout << "Usage: " << argv0 << " [options] journal-file source dest\n"
 "\n"
 "Options:\n"
 "    --help, -h          this help message\n"
@@ -46,24 +49,23 @@ static void print_help(const char *argv0) {
 "    --onestep, -1       perform a smallest step possible\n"
 "    --resume, -r        resume existing merge, do not try creating new one\n"
 "    --rollback, -R      roll existing merge back\n"
-"    --verbose, -v       report progress verbosely\n"
-"", argv0);
+"    --verbose, -v       report progress verbosely\n";
 }
 
 static void print_progress(const char *path, unsigned long int megs, unsigned long int size) {
 	if (megs == 0)
-		printf(">>> %s\n", path);
+		std::cerr << ">>> " << path << std::endl;
 }
 
 static void print_removal(const char *path, int result) {
 	if (!result)
-		printf("<<<          %s\n", path);
+		std::cerr << "<<<          " << path << std::endl;
 	else if (result == EEXIST)
-		printf("--- REPLACED %s\n", path);
+		std::cerr << "--- REPLACED " << path << std::endl;
 	else if (result == ENOENT)
-		printf("--- !EXIST   %s\n", path);
+		std::cerr << "--- !EXIST   " << path << std::endl;
 	else if (result == ENOTEMPTY)
-		printf("--- !EMPTY   %s\n", path);
+		std::cerr << "--- !EMPTY   " << path << std::endl;
 }
 
 struct loop_data {
@@ -237,7 +239,6 @@ int main(int argc, char *argv[]) {
 
 		if (input_files) {
 			char buf[0x8000];
-			int res;
 
 			while (fgets(buf, sizeof(buf), stdin)) {
 				const int last = strlen(buf) - 1;
