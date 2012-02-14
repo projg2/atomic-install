@@ -91,7 +91,6 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 	/* + .<fn-prefix>~ + .new */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
-	char *oldpathbuf, *newpathbuf;
 	ai_journal_file_t *pp;
 	const char *relpath;
 
@@ -100,15 +99,8 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 	if (!ai_merge_constraint_flags(j, 0, AI_MERGE_COPIED_NEW|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
-	oldpathbuf = (char*) malloc(oldpathlen);
-	if (!oldpathbuf)
-		return errno;
-
-	newpathbuf = (char*) malloc(newpathlen);
-	if (!newpathbuf) {
-		free(oldpathbuf);
-		return errno;
-	}
+	char oldpathbuf[oldpathlen];
+	char newpathbuf[newpathlen];
 
 	relpath = oldpathbuf + strlen(source);
 
@@ -153,9 +145,6 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 			break;
 	}
 
-	free(oldpathbuf);
-	free(newpathbuf);
-
 	/* Mark as done. */
 	if (!ret)
 		ret = ai_journal_set_flag(j, AI_MERGE_COPIED_NEW);
@@ -169,7 +158,6 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 	/* + .<fn-prefix>~ + .new */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
-	char *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
@@ -179,9 +167,7 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 	if (ret)
 		return ret;
 
-	newpathbuf = (char*) malloc(newpathlen);
-	if (!newpathbuf)
-		return errno;
+	char newpathbuf[newpathlen];
 
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
@@ -205,8 +191,6 @@ int ai_merge_rollback_new(const char *dest, ai_journal_t j) {
 		/* XXX: remove new directories */
 	}
 
-	free(newpathbuf);
-
 	return ret;
 }
 
@@ -218,7 +202,6 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 	/* + .<fn-prefix>~ + .old */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
-	char *oldpathbuf, *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
@@ -229,15 +212,8 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 				AI_MERGE_BACKED_OLD_UP|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
-	oldpathbuf = (char*) malloc(oldpathlen);
-	if (!oldpathbuf)
-		return errno;
-
-	newpathbuf = (char*) malloc(newpathlen);
-	if (!newpathbuf) {
-		free(oldpathbuf);
-		return errno;
-	}
+	char oldpathbuf[oldpathlen];
+	char newpathbuf[newpathlen];
 
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
@@ -270,9 +246,6 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j) {
 			break;
 	}
 
-	free(oldpathbuf);
-	free(newpathbuf);
-
 	/* Mark as done. */
 	if (!ret || ret == ENOENT)
 		ret = ai_journal_set_flag(j, AI_MERGE_BACKED_OLD_UP);
@@ -287,7 +260,6 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 	 * + .<fn-prefix>~ + .old */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
-	char *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
@@ -301,9 +273,7 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 	if (ret)
 		return ret;
 
-	newpathbuf = (char*) malloc(newpathlen);
-	if (!newpathbuf)
-		return errno;
+	char newpathbuf[newpathlen];
 
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
@@ -322,8 +292,6 @@ int ai_merge_rollback_old(const char *dest, ai_journal_t j) {
 		/* XXX: remove new directories */
 	}
 
-	free(newpathbuf);
-
 	return ret;
 }
 
@@ -335,7 +303,6 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 	/* + .<fn-prefix>~ + .new */
 	const size_t oldpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
-	char *oldpathbuf, *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
@@ -345,15 +312,8 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 				AI_MERGE_REPLACED|AI_MERGE_ROLLBACK_STARTED))
 		return EINVAL;
 
-	oldpathbuf = (char*) malloc(oldpathlen);
-	if (!oldpathbuf)
-		return errno;
-
-	newpathbuf = (char*) malloc(newpathlen);
-	if (!newpathbuf) {
-		free(oldpathbuf);
-		return errno;
-	}
+	char oldpathbuf[oldpathlen];
+	char newpathbuf[newpathlen];
 
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
@@ -379,9 +339,6 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 			break;
 	}
 
-	free(oldpathbuf);
-	free(newpathbuf);
-
 	/* Mark as done. */
 	if (!ret)
 		ret = ai_journal_set_flag(j, AI_MERGE_REPLACED);
@@ -397,7 +354,6 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 	/* + .<fn-prefix>~ + .old */
 	const size_t oldpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
-	char *oldpathbuf, *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
@@ -407,15 +363,8 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 				AI_MERGE_REPLACED))
 		return EINVAL;
 
-	oldpathbuf = (char*) malloc(oldpathlen);
-	if (!oldpathbuf)
-		return errno;
-
-	newpathbuf = (char*) malloc(newpathlen);
-	if (!newpathbuf) {
-		free(oldpathbuf);
-		return errno;
-	}
+	char oldpathbuf[oldpathlen];
+	char newpathbuf[newpathlen];
 
 	/* Mark rollback as started. */
 	ret = ai_journal_set_flag(j, AI_MERGE_ROLLBACK_STARTED);
@@ -445,9 +394,6 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 			break;
 	}
 
-	free(oldpathbuf);
-	free(newpathbuf);
-
 	return ret == ENOENT ? 0 : ret;
 }
 
@@ -459,7 +405,6 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 	 * + .<fn-prefix>~ + .old */
 	const size_t newpathlen = strlen(dest) + maxpathlen + 7 + strlen(fn_prefix);
 
-	char *newpathbuf;
 	ai_journal_file_t *pp;
 
 	int ret = 0;
@@ -467,9 +412,7 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 	if (!ai_merge_constraint_flags(j, AI_MERGE_REPLACED, 0))
 		return EINVAL;
 
-	newpathbuf = (char*) malloc(newpathlen);
-	if (!newpathbuf)
-		return errno;
+	char newpathbuf[newpathlen];
 
 	for (pp = ai_journal_get_files(j); pp; pp = ai_journal_file_next(pp)) {
 		const char *path = ai_journal_file_path(pp);
@@ -509,8 +452,6 @@ int ai_merge_cleanup(const char *dest, ai_journal_t j,
 			removal_callback(newpathbuf, errno);
 		}
 	}
-
-	free(newpathbuf);
 
 	return ret;
 }

@@ -102,33 +102,25 @@ struct ai_journal {
  *	errno otherwise
  */
 static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int is_dir, uint64_t *filelen, uint64_t *maxpathlen) {
-	char *fn;
 	DIR *dir;
 	struct dirent *dent;
 	int ret;
 
-	fn = (char*) malloc(strlen(root) + strlen(path) + 1);
-	if (!fn)
-		return errno;
+	char fn[strlen(root) + strlen(path) + 1];
 	sprintf(fn, "%s%s", root, path);
 
 	/* We need to check whether it's a directory */
 	if (!is_dir) {
 		struct stat st;
 
-		if (lstat(fn, &st)) {
-			free(fn);
+		if (lstat(fn, &st))
 			return errno;
-		}
 
-		if (!S_ISDIR(st.st_mode)) {
-			free(fn);
+		if (!S_ISDIR(st.st_mode))
 			return ENOTDIR;
-		}
 	}
 
 	dir = opendir(fn);
-	free(fn);
 	if (!dir)
 		return errno;
 
@@ -152,24 +144,23 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 
 		/* Prepare the relative path */
 		len = strlen(path) + strlen(dent->d_name) + 2;
-		fn = (char*) malloc(len);
-		if (!fn)
-			break;
-		sprintf(fn, "%s/%s", path, dent->d_name);
+		char sub_fn[len];
+		sprintf(sub_fn, "%s/%s", path, dent->d_name);
 
 		if (is_dir != 0) {
-			ret = ai_traverse_tree(root, fn, outf, is_dir == 1, filelen, maxpathlen);
+			ret = ai_traverse_tree(root, sub_fn, outf, is_dir == 1,
+					filelen, maxpathlen);
 
 			if (ret == ENOTDIR)
 				is_dir = 0;
 		}
 
 		{
-			const char *fnpart = strrchr(fn, '/') + 1;
-			const size_t pathlen = fnpart - fn;
+			const char *fnpart = strrchr(sub_fn, '/') + 1;
+			const size_t pathlen = fnpart - sub_fn;
 
 			if (fputc(is_dir ? AI_MERGE_FILE_DIR : 0, outf) == EOF /* flags */
-					|| fwrite(fn, pathlen, 1, outf) != 1 /* path */
+					|| fwrite(sub_fn, pathlen, 1, outf) != 1 /* path */
 					|| fputc(0, outf) == EOF /* sep */
 					|| fwrite(fnpart, len - pathlen, 1, outf) != 1) /* fn */
 				ret = errno;
@@ -181,7 +172,6 @@ static int ai_traverse_tree(const char *root, const char *path, FILE *outf, int 
 				*maxpathlen = len;
 		}
 
-		free(fn);
 		if (ret) {
 			closedir(dir);
 			return ret;

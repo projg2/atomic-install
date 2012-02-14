@@ -65,19 +65,10 @@ int ai_cp_l(const char *source, const char *dest) {
  * Returns: 0 on success, errno on failure
  */
 static int ai_cp_symlink(const char *source, const char *dest, ssize_t symlen) {
-	static char *buf = NULL;
-	static ssize_t bufsize;
-
-	/* ensure buffer is at least symlen+1 long */
-	if (!buf || bufsize <= symlen) {
-		bufsize = symlen + 1;
-		buf = (char*) realloc(buf, bufsize);
-		if (!buf)
-			return errno;
-	}
+	char buf[symlen + 1];
 
 	/* ensure content length didn't change */
-	if (readlink(source, buf, bufsize) != symlen)
+	if (readlink(source, buf, symlen + 1) != symlen)
 		return EINVAL; /* XXX? */
 
 	/* null terminate */
