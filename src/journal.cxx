@@ -302,6 +302,7 @@ int ai_journal_create_finish(ai_journal_t j) {
 	if (fclose(f) && !ret)
 		ret = errno;
 
+	delete j;
 	return ret;
 }
 
