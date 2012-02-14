@@ -4,7 +4,7 @@
  */
 
 #include "config.h"
-#include "journal.h"
+#include "journal.hxx"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,7 +29,7 @@
 #	include <stdint.h>
 #endif
 
-#include "merge.h"
+#include "merge.hxx"
 
 /**
  * AI_JOURNAL_MAGIC

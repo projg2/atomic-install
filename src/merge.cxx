@@ -4,9 +4,9 @@
  */
 
 #include "config.h"
-#include "copy.h"
-#include "journal.h"
-#include "merge.h"
+#include "copy.hxx"
+#include "journal.hxx"
+#include "merge.hxx"
 
 #include <stdlib.h>
 #include <stdio.h>

@@ -18,8 +18,8 @@
 #include <getopt.h>
 #include <signal.h>
 
-#include "journal.h"
-#include "merge.h"
+#include "journal.hxx"
+#include "merge.hxx"
 
 static const struct option opts[] = {
 	{ "help", no_argument, NULL, 'h' },

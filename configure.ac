@@ -6,7 +6,8 @@ AM_INIT_AUTOMAKE([1.6 foreign dist-bzip2 -Wall])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 
-AC_PROG_CC
+AC_LANG([C++])
+AC_PROG_CXX
 AC_USE_SYSTEM_EXTENSIONS
 
 AC_CHECK_FUNCS([fchmodat flock posix_fallocate posix_fadvise sync utimensat])

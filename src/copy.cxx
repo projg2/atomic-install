@@ -4,7 +4,7 @@
  */
 
 #include "config.h"
-#include "copy.h"
+#include "copy.hxx"
 
 #include <stdlib.h>
 #include <stdio.h>

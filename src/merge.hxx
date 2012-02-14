@@ -18,7 +18,7 @@
  * Note: the API is unstable right now, and will be undergoing changes.
  */
 
-#include "journal.h"
+#include "journal.hxx"
 
 /**
  * ai_merge_flags_t
