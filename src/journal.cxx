@@ -213,13 +213,11 @@ int ai_journal_create_start(const char *journal_path, const char *location,
 
 	int retval;
 
-	newj = (ai_journal*) malloc(sizeof(*newj));
-	if (!newj)
-		return errno;
+	newj = new ai_journal;
 
 	f = fopen(journal_path, "wb");
 	if (!f) {
-		free(newj);
+		delete newj;
 		return errno;
 	}
 
@@ -240,7 +238,7 @@ int ai_journal_create_start(const char *journal_path, const char *location,
 
 	if (fwrite(newj, sizeof(*newj), 1, f) < 1) {
 		fclose(f);
-		free(newj);
+		delete newj;
 		return errno;
 	}
 
@@ -251,7 +249,7 @@ int ai_journal_create_start(const char *journal_path, const char *location,
 		*ret = newj;
 	else {
 		fclose(f);
-		free(newj);
+		delete newj;
 	}
 
 	return retval;
