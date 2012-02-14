@@ -133,7 +133,7 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 			continue;
 		}
 
-		if (progress_callback)
+		if (progress_callback && !(flags & AI_MERGE_FILE_DIR))
 			progress_callback(relpath, 0, 0);
 		try
 		{
