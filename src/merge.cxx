@@ -64,7 +64,7 @@ static void ai_mkdir_cp(char *source, char *dest, const char *path,
 		/* Try to copy the directory entry */
 		try
 		{
-			ai_cp_a(source, dest);
+			ai::cp_a(source, dest);
 		}
 		catch (ai::io_error& e)
 		{
@@ -123,10 +123,10 @@ int ai_merge_copy_new(const char *source, const char *dest, ai_journal_t j,
 		sprintf(oldpathbuf, "%s%s%s", source, path, name);
 		if (flags & AI_MERGE_FILE_DIR) {
 			sprintf(newpathbuf, "%s%s%s", dest, path, name);
-			copy_func = ai_cp_a;
+			copy_func = ai::cp_a;
 		} else {
 			sprintf(newpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
-			copy_func = ai_cp_l;
+			copy_func = ai::cp_l;
 		}
 
 		if (flags & AI_MERGE_FILE_REMOVE) {
@@ -250,7 +250,7 @@ int ai_merge_backup_old(const char *dest, ai_journal_t j)
 
 		try
 		{
-			ai_cp_l(oldpathbuf, newpathbuf);
+			ai::cp_l(oldpathbuf, newpathbuf);
 			const int sf_ret = ai_journal_file_set_flag(pp, AI_MERGE_FILE_BACKED_UP);
 			if (sf_ret)
 				return sf_ret;
@@ -340,7 +340,7 @@ int ai_merge_replace(const char *dest, ai_journal_t j) {
 				throw ai::io_error("unlink()", errno, newpathbuf);
 		} else {
 			sprintf(oldpathbuf, "%s%s.%s~%s.new", dest, path, fn_prefix, name);
-			ai_mv(oldpathbuf, newpathbuf);
+			ai::mv(oldpathbuf, newpathbuf);
 		}
 	}
 
@@ -389,7 +389,7 @@ int ai_merge_rollback_replace(const char *dest, ai_journal_t j) {
 				sprintf(oldpathbuf, "%s%s.%s~%s.old", dest, path, fn_prefix, name);
 				sprintf(newpathbuf, "%s%s%s", dest, path, name);
 
-				ai_mv(oldpathbuf, newpathbuf);
+				ai::mv(oldpathbuf, newpathbuf);
 			}
 			else
 			{

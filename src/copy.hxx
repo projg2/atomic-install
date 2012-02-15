@@ -19,11 +19,10 @@ namespace atomic_install
 
 		operator int() const throw();
 	};
+
+	void mv(const char *source, const char *dest);
+	void cp_l(const char *source, const char *dest);
+	void cp_a(const char *source, const char *dest);
 };
-
-
-void ai_mv(const char *source, const char *dest);
-void ai_cp_l(const char *source, const char *dest);
-void ai_cp_a(const char *source, const char *dest);
 
 #endif /*_ATOMIC_INSTALL_COPY_HXX*/
