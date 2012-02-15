@@ -25,6 +25,21 @@
 
 namespace ai = atomic_install;
 
+ai::local_fd::local_fd(int fd) throw()
+	: _fd(fd)
+{
+}
+
+ai::local_fd::~local_fd() throw()
+{
+	close(_fd);
+}
+
+ai::local_fd::operator int() const throw()
+{
+	return _fd;
+}
+
 void ai_mv(const char *source, const char *dest)
 {
 	if (!rename(source, dest))
@@ -117,32 +132,24 @@ static int ai_splice(int fd_in, int fd_out)
 
 static void ai_cp_reg(const char *source, const char *dest, off_t expsize)
 {
-	int fd_in, fd_out;
 	int splret;
 
-	fd_in = open(source, O_RDONLY);
+	ai::local_fd fd_in(open(source, O_RDONLY));
 	if (fd_in == -1)
 		throw ai::io_error("open()", errno, source);
 
 	/* don't care about perms, will have to chmod anyway */
-	fd_out = creat(dest, 0666);
+	ai::local_fd fd_out = creat(dest, 0666);
 	if (fd_out == -1)
-	{
-		const int tmp = errno;
-		close(fd_in);
-		throw ai::io_error("creat()", tmp, dest);
-	}
+		throw ai::io_error("creat()", errno, dest);
 
 #ifdef HAVE_POSIX_FALLOCATE
 	if (expsize != 0)
 	{
 		const int ret = posix_fallocate(fd_out, 0, expsize);
 
-		if (ret) {
-			close(fd_out);
-			close(fd_in);
+		if (ret)
 			throw ai::io_error("posix_fallocate()", ret, dest);
-		}
 	}
 #endif
 
@@ -158,16 +165,10 @@ static void ai_cp_reg(const char *source, const char *dest, off_t expsize)
 		}
 		catch (ai::io_error& e)
 		{
-			close(fd_out);
-			close(fd_in);
 			e.set_paths(source, dest);
 		}
 	}
 	while (splret > 0);
-
-	if (close(fd_out))
-		throw ai::io_error("close() [open for writing]", errno, dest);
-	close(fd_in);
 }
 
 static void ai_cp_stat(const char *dest, struct stat st)

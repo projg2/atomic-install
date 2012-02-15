@@ -7,6 +7,21 @@
 #ifndef _ATOMIC_INSTALL_COPY_HXX
 #define _ATOMIC_INSTALL_COPY_HXX
 
+namespace atomic_install
+{
+	class local_fd
+	{
+		int _fd;
+
+	public:
+		local_fd(int fd) throw();
+		~local_fd() throw();
+
+		operator int() const throw();
+	};
+};
+
+
 void ai_mv(const char *source, const char *dest);
 void ai_cp_l(const char *source, const char *dest);
 void ai_cp_a(const char *source, const char *dest);
