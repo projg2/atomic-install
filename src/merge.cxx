@@ -21,6 +21,7 @@
 #	include <stdint.h>
 #endif
 
+#include <iostream>
 #include <stdexcept>
 
 #include "exceptions.hxx"
@@ -36,33 +37,40 @@ static void ai_mkdir_cp(char *source, char *dest, const char *path,
 	const char *relpath = sp;
 
 	while (sp) {
-		*sp = 0;
-		*dp = 0;
+		class path_stripper
+		{
+			char& _sp;
+			char& _dp;
+		public:
+			path_stripper(char& sp, char& dp)
+				: _sp(sp), _dp(dp)
+			{
+				sp = 0;
+				dp = 0;
+			}
+
+			~path_stripper()
+			{
+				_sp = '/';
+				_dp = '/';
+			}
+		};
+
+		path_stripper stripper(*sp, *dp);
 
 		if (progress_callback && *relpath)
 			progress_callback(relpath, 0, 0);
+
 		/* Try to copy the directory entry */
 		try
 		{
-			try
-			{
-				ai_cp_a(source, dest);
-			}
-			catch (ai::io_error& e)
-			{
-				if (e != EEXIST && e != EISDIR)
-					throw;
-			}
+			ai_cp_a(source, dest);
 		}
-		catch (std::exception& e)
+		catch (ai::io_error& e)
 		{
-			*sp = '/';
-			*dp = '/';
-
-			throw;
+			if (e != EEXIST && e != EISDIR)
+				throw;
 		}
-		*sp = '/';
-		*dp = '/';
 
 		sp = strchr(sp+1, '/');
 		dp = strchr(dp+1, '/');
